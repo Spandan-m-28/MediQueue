@@ -1,2 +1,19 @@
-./node_modules
+node_modules/
 .env
+
+# logs
+logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# build folders
+dist/
+build/
+
+# IDE files
+.vscode/
+.idea/
