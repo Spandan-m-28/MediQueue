@@ -23,7 +23,7 @@ const userSchema = new Schema({
     role: { // patient | staff | admin
         type: String,
         enum: ["patient", "staff", "admin"],
-        required: true
+        default: "patient"
     },
     hospitalId: { 
         // Optional for staff

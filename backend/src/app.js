@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import authRouter from "./routes/auth.routes.js"
 
 const app = express();
 
@@ -12,6 +13,10 @@ app.use(cors({
 
 // Middleware for pasing json 
 app.use(express.json());
+
+// Routes for user
+app.use("/api/auth",authRouter);
+app.use("/api/auth",authRouter);
 
 // Basic '/' route
 app.get("/", (req,res) => {
