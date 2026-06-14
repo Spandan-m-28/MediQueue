@@ -3,6 +3,7 @@ import { User } from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
+// Controller for Registering a user
 const registerUser = async (req, res) => {
   try {
     const { name, email, password, phone } = req.body;
@@ -56,6 +57,7 @@ const registerUser = async (req, res) => {
   }
 };
 
+// Controller for Logging in a user
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -118,4 +120,12 @@ const loginUser = async (req, res) => {
   }
 };
 
-export { registerUser, loginUser };
+// Controller for sending the profile info
+const me = (req, res) => {
+  return res.status(200).json({
+    success: true,
+    user: req.user,
+  });
+};
+
+export { registerUser, loginUser, me };

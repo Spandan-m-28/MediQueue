@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import authRouter from "./routes/auth.routes.js"
+import hospitalRouter from "./routes/hospital.routes.js"
 
 const app = express();
 
@@ -16,7 +17,10 @@ app.use(express.json());
 
 // Routes for user
 app.use("/api/auth",authRouter);
-app.use("/api/auth",authRouter);
+app.use("/api/test",authRouter);
+
+// Router for Hospital
+app.use("/api/hospital",hospitalRouter);
 
 // Basic '/' route
 app.get("/", (req,res) => {
