@@ -5,7 +5,6 @@ import { Hospital } from "../models/hospital.model.js";
 // Controller for creating hospital
 const createHospital = async (req, res) => {
   try {
-
     const { name, address, city, state, pincode, phone, email } = req.body;
     if (
       [name, address, city, state, pincode, phone, email].some(
@@ -37,7 +36,7 @@ const createHospital = async (req, res) => {
       pincode,
       phone,
       email,
-      createdBy: req.user._id
+      createdBy: req.user._id,
     });
 
     return res.status(201).json({
@@ -54,4 +53,48 @@ const createHospital = async (req, res) => {
   }
 };
 
-export { createHospital };
+const getAllHospitals = async (req, res) => {
+  try {
+    const hospitals = await Hospital.find();
+
+    return res.status(200).json({
+      success: true,
+      message: "Hospitals returned successfully",
+      hospitals,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server error",
+    });
+  }
+};
+
+const getHospitalById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const hospital = await Hospital.findById(id);
+    console.log(hospital);
+    if (!hospital) {
+      return res.status(404).json({
+        success: false,
+        message: "Hospital Not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Hospital found successfully",
+      hospital,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+export { createHospital, getAllHospitals, getHospitalById };
