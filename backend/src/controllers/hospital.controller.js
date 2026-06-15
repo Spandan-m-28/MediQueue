@@ -75,7 +75,7 @@ const getHospitalById = async (req, res) => {
     const { id } = req.params;
 
     const hospital = await Hospital.findById(id);
-    console.log(hospital);
+    
     if (!hospital) {
       return res.status(404).json({
         success: false,

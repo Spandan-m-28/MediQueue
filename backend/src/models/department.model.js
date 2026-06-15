@@ -14,7 +14,7 @@ const departmentSchema = new Schema({
         type: Number,
         default: 0
     },
-    doctorName: {
+    doctorNames: {
         type: [String],
         required: true
     },

@@ -5,7 +5,7 @@ import { createHospital ,getAllHospitals,getHospitalById} from "../controllers/h
 
 const router = Router();
 
-router.post("/createHospital", verifyJWT, allowRoles(["staff","admin"]), createHospital);
-router.get("/hospital",verifyJWT,getAllHospitals);
-router.get("/hospital/:id",getHospitalById)
+router.post("/createHospital", verifyJWT, allowRoles("staff","admin"), createHospital);
+router.get("/",verifyJWT,getAllHospitals);
+router.get("/:id",getHospitalById)
 export default router;
