@@ -88,6 +88,4 @@ const getDepartments = async (req, res) => {
   }
 };
 
-
-
 export { createDepartment, getDepartments };

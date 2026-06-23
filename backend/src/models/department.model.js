@@ -12,7 +12,7 @@ const departmentSchema = new Schema({
     },
     averageConsultationTime: {
         type: Number,
-        default: 0
+        default: 5
     },
     doctorNames: {
         type: [String],
