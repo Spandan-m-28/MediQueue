@@ -111,9 +111,10 @@ const updateQueueStatus = async (req, res) => {
 
 const callNextToken = async (req, res) => {
   try {
-    const queueId = req.params;
+    const { queueId } = req.params;
 
     const queue = await Queue.findById(queueId);
+
     if (!queue) {
       return res.status(404).json({
         success: false,
@@ -121,20 +122,49 @@ const callNextToken = async (req, res) => {
       });
     }
 
+    if (queue.queueStatus !== "active") {
+      return res.status(400).json({
+        success: false,
+        message: "Queue is not active",
+      });
+    }
+
+    const activeToken = await Token.findOne({
+      queueId,
+      status: "active",
+    });
+
+    if (activeToken) {
+      return res.status(400).json({
+        success: false,
+        message: "Complete or miss the current active token first",
+      });
+    }
+
+    const nextTokenNumber = queue.currentToken + 1;
+
     const token = await Token.findOne({
-      tokenNumber: queue.currentToken + 1,
+      queueId,
+      tokenNumber: nextTokenNumber,
+      status: "waiting",
     });
 
     if (!token) {
       return res.status(404).json({
         success: false,
-        message: "Next token not found",
+        message: "No waiting token found",
       });
     }
 
+    token.status = "active";
+    await token.save();
+
+    queue.currentToken = nextTokenNumber;
+    await queue.save();
+
     return res.status(200).json({
-      success: false,
-      message: "Next token returned successfully",
+      success: true,
+      message: "Next token called successfully",
       token,
     });
   } catch (error) {
@@ -145,4 +175,96 @@ const callNextToken = async (req, res) => {
   }
 };
 
-export { createQueue, getQueue, updateQueueStatus, callNextToken };
+const completeCurrentToken = async (req, res) => {
+  try {
+    const { queueId } = req.params;
+
+    const queue = await Queue.findById(queueId);
+
+    if (!queue) {
+      return res.status(404).json({
+        success: false,
+        message: "Queue not found",
+      });
+    }
+
+    const activeToken = await Token.findOne({
+      queueId,
+      status: "active",
+    });
+
+    if (!activeToken) {
+      return res.status(404).json({
+        success: false,
+        message: "No active token found",
+      });
+    }
+
+    activeToken.status = "completed";
+    activeToken.completedAt = new Date();
+
+    await activeToken.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Token completed successfully",
+      token: activeToken,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+const missCurrentToken = async (req, res) => {
+  try {
+    const { queueId } = req.params;
+
+    const queue = await Queue.findById(queueId);
+
+    if (!queue) {
+      return res.status(404).json({
+        success: false,
+        message: "Queue not found",
+      });
+    }
+
+    const activeToken = await Token.findOne({
+      queueId,
+      status: "active",
+    });
+
+    if (!activeToken) {
+      return res.status(404).json({
+        success: false,
+        message: "No active token found",
+      });
+    }
+
+    activeToken.status = "missed";
+
+    await activeToken.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Token marked as missed",
+      token: activeToken,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+export {
+  createQueue,
+  getQueue,
+  updateQueueStatus,
+  callNextToken,
+  completeCurrentToken,
+  missCurrentToken,
+};
