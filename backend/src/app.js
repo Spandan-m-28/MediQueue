@@ -34,7 +34,7 @@ app.use("/api/department", departmentRouter);
 app.use("/api/queue", queueRouter);
 
 // Router for Token
-app.use("/api/token",tokenRouter);
+app.use("/api/token", tokenRouter);
 
 // Basic '/' route
 app.get("/", (req, res) => {
