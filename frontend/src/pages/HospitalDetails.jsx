@@ -122,7 +122,7 @@ function HospitalHero({ hospital }) {
         {/* decorative circles */}
         <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full opacity-10" style={{ background: accent }} />
         <div className="absolute -bottom-10 -left-10 w-48 h-48 rounded-full opacity-10" style={{ background: "#14B8A6" }} />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-white/30" />
+        <div className="absolute inset-0 bg-linear-to-b from-transparent to-white/30" />
       </div>
 
       {/* Card overlay */}

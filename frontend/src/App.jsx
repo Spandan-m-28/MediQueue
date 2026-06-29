@@ -7,6 +7,7 @@ import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import Hospitals from "./pages/Hospitals.jsx";
 import HospitalDetails from "./pages/HospitalDetails.jsx";
+import QueueDetails from "./pages/QueueDetails.jsx";
 
 function App() {
   return (
@@ -18,6 +19,8 @@ function App() {
 
         <Route path="/hospitals" element={<Hospitals />} />
         <Route path="/hospitals/:id" element={<HospitalDetails/>}/>
+
+        <Route path="/queue/:id" element={<QueueDetails/>} />
       </Routes>
     </>
   );

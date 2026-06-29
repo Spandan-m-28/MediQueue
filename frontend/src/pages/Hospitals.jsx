@@ -314,7 +314,7 @@ export default function Hospitals() {
             <div className="relative">
               <button
                 onClick={() => { setCityOpen(!cityOpen); setSortOpen(false); }}
-                className="h-12 px-4 rounded-xl border border-gray-200 bg-white flex items-center gap-2 text-sm font-medium text-gray-600 hover:border-blue-300 hover:text-blue-600 transition-all min-w-[148px] justify-between"
+                className="h-12 px-4 rounded-xl border border-gray-200 bg-white flex items-center gap-2 text-sm font-medium text-gray-600 hover:border-blue-300 hover:text-blue-600 transition-all min-w-37 justify-between"
               >
                 <div className="flex items-center gap-2">
                   <SlidersHorizontal size={15} className="text-gray-400" />
@@ -342,7 +342,7 @@ export default function Hospitals() {
             <div className="relative">
               <button
                 onClick={() => { setSortOpen(!sortOpen); setCityOpen(false); }}
-                className="h-12 px-4 rounded-xl border border-gray-200 bg-white flex items-center gap-2 text-sm font-medium text-gray-600 hover:border-blue-300 hover:text-blue-600 transition-all min-w-[148px] justify-between"
+                className="h-12 px-4 rounded-xl border border-gray-200 bg-white flex items-center gap-2 text-sm font-medium text-gray-600 hover:border-blue-300 hover:text-blue-600 transition-all min-w-37 justify-between"
               >
                 <div className="flex items-center gap-2">
                   <ArrowUpDown size={15} className="text-gray-400" />
