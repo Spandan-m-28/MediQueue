@@ -948,10 +948,6 @@ function CTA() {
             <div className="absolute -bottom-20 -right-20 w-80 h-80 rounded-full bg-teal-500/10 blur-2xl" />
           </div>
           <div className="relative z-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-white/70 text-xs font-semibold mb-6">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-              Available at 500+ hospitals
-            </div>
             <h2 className="text-3xl sm:text-5xl font-extrabold text-white mb-5 leading-tight">
               Ready to Transform
               <br />
