@@ -1,6 +1,6 @@
 import React from "react";
-import Navbar from "../components/Navbar.jsx";
-import Footer from "../components/Footer.jsx";
+import Navbar from "../components/MainNavbar.jsx";
+import Footer from "../components/MainFooter.jsx";
 
 /* ─────────────────────────── HERO ─────────────────────────── */
 function Hero() {

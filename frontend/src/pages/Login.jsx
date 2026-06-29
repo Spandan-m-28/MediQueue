@@ -58,7 +58,7 @@ function InputField({
 /* ── left panel illustration ── */
 function LeftPanel() {
   return (
-    <div className="hidden lg:flex flex-col justify-between relative overflow-hidden bg-linear-to-br from-blue-700 via-blue-600 to-teal-500 p-12 text-white pb-40">
+    <div className="hidden lg:flex flex-col justify-between relative overflow-hidden bg-linear-to-br from-blue-700 via-blue-600 to-teal-500 p-12 text-white pb-40 rounded-tr-4xl rounded-br-4xl">
       {/* Decorative circles */}
       <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-white/10 blur-2xl pointer-events-none" />
       <div className="absolute -bottom-24 -right-24 w-80 h-80 rounded-full bg-teal-400/20 blur-2xl pointer-events-none" />
