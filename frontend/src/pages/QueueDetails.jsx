@@ -204,7 +204,7 @@ function QueueSummaryCard({ queue, myToken, onJoin, onLeave, joining }) {
       style={{ boxShadow: "0 4px 24px -4px rgba(37,99,235,0.10)" }}>
 
       {/* top gradient bar */}
-      <div className="h-1.5 bg-gradient-to-r from-blue-600 via-teal-500 to-blue-400" />
+      <div className="h-1.5 bg-linear-to-r from-blue-600 via-teal-500 to-blue-400" />
 
       <div className="p-6 md:p-8">
         <div className="flex flex-col lg:flex-row gap-8 items-start">
@@ -220,7 +220,7 @@ function QueueSummaryCard({ queue, myToken, onJoin, onLeave, joining }) {
             <div className="relative flex flex-col sm:flex-row items-start sm:items-end gap-6 mb-6">
               <div className="relative">
                 <div className="absolute inset-0 bg-blue-600 rounded-3xl blur-xl opacity-10 scale-110" />
-                <div className="relative bg-gradient-to-br from-blue-600 to-blue-700 rounded-3xl p-6 sm:p-8 text-white shadow-lg shadow-blue-200 min-w-[140px] text-center">
+                <div className="relative bg-linear-to-br from-blue-600 to-blue-700 rounded-3xl p-6 sm:p-8 text-white shadow-lg shadow-blue-200 min-w-35 text-center">
                   <div className="text-xs font-semibold uppercase tracking-widest text-blue-200 mb-1">Current Token</div>
                   <div className="text-6xl sm:text-7xl font-black leading-none tabular-nums">{displayToken}</div>
                   <div className="mt-2"><StatusBadge status={queue.status} /></div>
@@ -246,7 +246,7 @@ function QueueSummaryCard({ queue, myToken, onJoin, onLeave, joining }) {
             </div>
             <div className="h-3 bg-gray-100 rounded-full overflow-hidden mb-1">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-blue-500 to-teal-400 transition-all duration-700"
+                className="h-full rounded-full bg-linear-to-r from-blue-500 to-teal-400 transition-all duration-700"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -443,7 +443,7 @@ function QueueSidePanel({ queue }) {
       </div>
 
       {/* Quick tips */}
-      <div className="bg-gradient-to-br from-blue-50 to-teal-50 rounded-2xl border border-blue-100 p-5">
+      <div className="bg-linear-to-br from-blue-50 to-teal-50 rounded-2xl border border-blue-100 p-5">
         <div className="flex items-center gap-2 mb-3">
           <Info size={14} className="text-blue-600" />
           <h3 className="font-semibold text-blue-900 text-sm">Tips</h3>
@@ -539,7 +539,7 @@ export default function QueueDetails() {
       <Navbar/>
 
       {/* ── Notice Banner ── */}
-      <div className="bg-gradient-to-r from-blue-600 to-teal-500">
+      <div className="bg-linear-to-r from-blue-600 to-teal-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-white text-xs font-medium">
             <Wifi size={13} className="shrink-0 animate-pulse" />
