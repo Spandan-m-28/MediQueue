@@ -8,6 +8,8 @@ import Register from "./pages/Register.jsx";
 import Hospitals from "./pages/Hospitals.jsx";
 import HospitalDetails from "./pages/HospitalDetails.jsx";
 import QueueDetails from "./pages/QueueDetails.jsx";
+import Staff from "./pages/Staff.jsx";
+import StaffQueueDashboard from "./pages/StaffQueueDashboard.jsx";
 
 function App() {
   return (
@@ -21,6 +23,9 @@ function App() {
         <Route path="/hospitals/:id" element={<HospitalDetails/>}/>
 
         <Route path="/queue/:id" element={<QueueDetails/>} />
+
+        <Route path="/staff" element={<Staff/>} />
+        <Route path="/staff/queue/:id" element={<StaffQueueDashboard/>}/>
       </Routes>
     </>
   );
