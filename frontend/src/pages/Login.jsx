@@ -624,8 +624,9 @@ export default function Login() {
                   </>
                 )}
               </button>
-
-              {/* Divider */} // May inculde this later
+              
+              {/* May inculde this later */}
+              {/* Divider */} 
               {/* <div className="relative my-2">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-gray-200" />
