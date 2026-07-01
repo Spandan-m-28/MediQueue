@@ -414,7 +414,7 @@ function LeftPanel() {
           { icon: "🎫", text: "Digital Queue Token" },
           { icon: "📡", text: "Live Queue Tracking" },
           { icon: "🔔", text: "Real-time Alerts" },
-          { icon: "🏥", text: "500+ Hospitals" },
+          { icon: "🏥", text: "Secure Authentication" },
         ].map((f) => (
           <div
             key={f.text}
@@ -530,11 +530,11 @@ export default function Register() {
   const icons = {
     user: (
       <svg
-        className="w-4 h-4"
+        className="w-4 h-4 text-black"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
-        strokeWidth={2}
+        strokeWidth={3}
       >
         <path
           strokeLinecap="round"
@@ -545,11 +545,11 @@ export default function Register() {
     ),
     email: (
       <svg
-        className="w-4 h-4"
+        className="w-4 h-4 text-black"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
-        strokeWidth={2}
+        strokeWidth={3}
       >
         <path
           strokeLinecap="round"
@@ -560,11 +560,11 @@ export default function Register() {
     ),
     phone: (
       <svg
-        className="w-4 h-4"
+        className="w-4 h-4 text-black"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
-        strokeWidth={2}
+        strokeWidth={3}
       >
         <path
           strokeLinecap="round"
@@ -575,11 +575,11 @@ export default function Register() {
     ),
     lock: (
       <svg
-        className="w-4 h-4"
+        className="w-4 h-4 text-black"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
-        strokeWidth={2}
+        strokeWidth={3}
       >
         <path
           strokeLinecap="round"
@@ -720,7 +720,7 @@ export default function Register() {
                     label="Full Name"
                     value={form.fullName}
                     onChange={handleChange}
-                    placeholder="Rahul Sharma"
+                    placeholder="Spandan Meshram"
                     error={errors.fullName}
                     icon={icons.user}
                   />
