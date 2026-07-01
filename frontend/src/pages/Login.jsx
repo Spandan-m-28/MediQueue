@@ -625,8 +625,8 @@ export default function Login() {
                 )}
               </button>
 
-              {/* Divider */}
-              <div className="relative my-2">
+              {/* Divider */} // May inculde this later
+              {/* <div className="relative my-2">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-gray-200" />
                 </div>
@@ -635,10 +635,10 @@ export default function Login() {
                     or continue with
                   </span>
                 </div>
-              </div>
+              </div> */}
 
               {/* Social login placeholders */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* <div className="grid grid-cols-2 gap-3">
                 {[
                   {
                     label: "Google",
@@ -685,7 +685,7 @@ export default function Login() {
                     <span>{provider.label}</span>
                   </button>
                 ))}
-              </div>
+              </div> */}
 
               {/* Register link */}
               <p className="text-center text-sm text-gray-500 pt-1">

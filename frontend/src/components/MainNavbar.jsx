@@ -66,13 +66,13 @@ export default function Navbar() {
           {/* Desktop Buttons */}
           <div className="hidden md:flex items-center gap-3">
             <a
-              href="#login"
+              href="login"
               className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors duration-200"
             >
               Login
             </a>
             <a
-              href="#register"
+              href="register"
               className="px-5 py-2 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5"
             >
               Register

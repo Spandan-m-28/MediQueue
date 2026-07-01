@@ -45,22 +45,6 @@ function Hero() {
               Explore Hospitals
             </a>
           </div>
-          {/* Trust badges */}
-          <div className="flex items-center gap-6 mt-10">
-            {[
-              { icon: "🏥", text: "500+ Hospitals" },
-              { icon: "👥", text: "1.2M+ Patients" },
-              { icon: "⚡", text: "Real-time Updates" },
-            ].map((b) => (
-              <div
-                key={b.text}
-                className="flex items-center gap-1.5 text-sm text-gray-500"
-              >
-                <span>{b.icon}</span>
-                <span>{b.text}</span>
-              </div>
-            ))}
-          </div>
         </div>
 
         {/* Illustration / Dashboard mockup */}
@@ -369,15 +353,15 @@ function Solution() {
             Meet MediQueue
           </h2>
           <p className="text-gray-500 max-w-xl mx-auto text-lg">
-            A digital-first queue management platform that puts patients in
-            control and hospitals ahead of their workload.
+            A digital queue management platform that puts patients in control
+            and hospitals ahead of their workload.
           </p>
         </div>
 
         {/* Flow */}
         <div className="relative">
           {/* Connecting line */}
-          <div className="hidden lg:block absolute top-12 left-[calc(8.33%+1rem)] right-[calc(8.33%+1rem)] h-0.5 bg-linear-to-r from-blue-200 via-teal-300 to-blue-200" />
+          <div className="hidden lg:block absolute top-7 left-[calc(8.33%+1rem)] right-[calc(8.33%+1rem)] h-0.5 bg-linear-to-r from-blue-200 via-teal-300 to-blue-200" />
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6 relative z-10">
             {solutionSteps.map((s, i) => (
@@ -956,8 +940,8 @@ function CTA() {
               </span>
             </h2>
             <p className="text-gray-400 max-w-lg mx-auto text-lg mb-10">
-              Join thousands of patients and hospitals already using MediQueue
-              to make healthcare more efficient.
+              Experience a smarter way to manage hospital queues. Start using
+              MediQueue today and simplify every hospital visit.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <a
