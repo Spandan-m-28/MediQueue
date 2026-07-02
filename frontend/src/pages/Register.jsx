@@ -1,4 +1,6 @@
 import { useState } from "react";
+import authService from "../services/auth.service.js";
+import { useNavigate } from "react-router-dom";
 
 /* ─────────────────────── reusable input ─────────────────────── */
 function InputField({
@@ -431,6 +433,8 @@ function LeftPanel() {
 
 /* ─────────────────────── main register page ─────────────────────── */
 export default function Register() {
+  const navigate = useNavigate();
+
   const [form, setForm] = useState({
     fullName: "",
     email: "",
@@ -504,21 +508,14 @@ export default function Register() {
     setSubmitError("");
 
     try {
-      // ── API INTEGRATION POINT ──────────────────────────────────────
-      // Replace the setTimeout below with your real registration API call.
-      // Example:
-      //   const response = await axios.post("/api/auth/register", {
-      //     name: form.fullName,
-      //     email: form.email,
-      //     phone: form.phone,
-      //     password: form.password,
-      //   });
-      //   const { token, user } = response.data;
-      //   localStorage.setItem("token", token);
-      //   navigate("/dashboard");   // redirect after success
-      // ──────────────────────────────────────────────────────────────
-      await new Promise((res) => setTimeout(res, 2000)); // simulated delay
+      await authService.register({
+        name: form.fullName,
+        email: form.email,
+        password: form.password,
+        phone: form.phone,
+      });
       setSuccess(true);
+      navigate("/login");
     } catch (err) {
       setSubmitError(err.message || "Registration failed. Please try again.");
     } finally {
