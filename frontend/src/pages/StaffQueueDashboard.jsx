@@ -281,17 +281,7 @@ function CurrentTokenCard({ queue, onNext, onPause, onResume, onClose, actionLoa
               Close Queue
             </button>
 
-            <div className="grid grid-cols-2 gap-2.5 pt-1">
-              {[{ label: "Opens", value: queue.start, icon: Play }, { label: "Closes", value: queue.end, icon: XCircle }].map(({ label, value, icon: Icon }) => (
-                <div key={label} className="bg-gray-50 rounded-xl border border-gray-100 px-3 py-2.5 flex items-center gap-2">
-                  <Icon size={13} className="text-gray-400 shrink-0" />
-                  <div>
-                    <div className="text-xs text-gray-400">{label}</div>
-                    <div className="text-xs font-semibold text-gray-700">{value}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            
           </div>
         </div>
       </div>
@@ -564,7 +554,7 @@ export default function StaffQueueDashboard() {
                     <h1 className="text-xl md:text-2xl font-bold text-gray-900">{queue.department} Queue</h1>
                     <StatusBadge status={queue.status} />
                   </div>
-                  <p className="text-sm text-gray-500 mt-0.5">{queue.hospital} · {queue.start} – {queue.end}</p>
+                  <p className="text-sm text-gray-500 mt-0.5">{queue.hospital}</p>
                 </div>
               </div>
             </div>

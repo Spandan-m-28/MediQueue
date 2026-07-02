@@ -174,17 +174,6 @@ function HospitalHero({ hospital }) {
               </div>
             </div>
 
-            {/* Meta badges */}
-            <div className="flex sm:flex-col gap-2 shrink-0">
-              <div className="text-center px-4 py-2 rounded-xl bg-blue-50 border border-blue-100">
-                <div className="text-xs text-blue-500 font-medium">Est.</div>
-                <div className="text-lg font-bold text-blue-700">{hospital.founded}</div>
-              </div>
-              <div className="text-center px-4 py-2 rounded-xl bg-teal-50 border border-teal-100">
-                <div className="text-xs text-teal-500 font-medium">Beds</div>
-                <div className="text-lg font-bold text-teal-700">{hospital.beds}</div>
-              </div>
-            </div>
           </div>
         </div>
       </div>

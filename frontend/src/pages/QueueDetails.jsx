@@ -327,21 +327,7 @@ function QueueSummaryCard({ queue, myToken, onJoin, onLeave, joining }) {
               )}
             </div>
 
-            {/* Quick meta */}
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              {[
-                { label: "Opens",  value: queue.startTime, icon: Play  },
-                { label: "Closes", value: queue.endTime,   icon: XCircle },
-              ].map(({ label, value, icon: Icon }) => (
-                <div key={label} className="bg-white rounded-xl border border-gray-100 px-3 py-2.5 flex items-center gap-2">
-                  <Icon size={13} className="text-gray-400 shrink-0" />
-                  <div>
-                    <div className="text-xs text-gray-400">{label}</div>
-                    <div className="text-xs font-semibold text-gray-700">{value}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            
           </div>
         </div>
       </div>
@@ -426,8 +412,6 @@ function QueueSidePanel({ queue }) {
             { icon: MapPin,      label: "Hospital",   value: queue.hospitalName   },
             { icon: User,        label: "Doctor",     value: queue.doctorName     },
             { icon: Clock,       label: "Consult",    value: `~${queue.avgConsultMins} min avg` },
-            { icon: Calendar,    label: "Start",      value: queue.startTime      },
-            { icon: Calendar,    label: "End",        value: queue.endTime        },
           ].map(({ icon: Icon, label, value }) => (
             <div key={label} className="flex items-start gap-3">
               <div className="w-7 h-7 rounded-lg bg-gray-50 flex items-center justify-center border border-gray-100 shrink-0">
@@ -452,8 +436,8 @@ function QueueSidePanel({ queue }) {
           {[
             "Arrive 5 min before your turn.",
             "Keep your token number handy.",
-            "Page auto-refreshes every 30s.",
-            "SMS alerts coming soon.",
+            "Page auto-refreshes.",
+            "SMS alerts.",
           ].map(tip => (
             <li key={tip} className="flex items-start gap-2 text-xs text-blue-700">
               <ArrowRight size={11} className="text-teal-500 mt-0.5 shrink-0" />
