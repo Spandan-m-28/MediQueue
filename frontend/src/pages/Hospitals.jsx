@@ -210,7 +210,6 @@ export default function Hospitals() {
     setLoading(true);
     const timer = setTimeout(async () => {
       const response = await hospitalService.getAllHospitals();
-      console.log(response);
       setHospitals(response.hospitals);
       setLoading(false);
     }, 1400);
