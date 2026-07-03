@@ -1,4 +1,7 @@
+import axios from "axios";
 import { useState } from "react";
+import authService from "../services/auth.service.js";
+import { useNavigate } from "react-router-dom";
 
 /* ── tiny reusable input wrapper ── */
 function InputField({
@@ -318,6 +321,8 @@ function LeftPanel() {
 
 /* ── main login page ── */
 export default function Login() {
+  const navigate = useNavigate();
+
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
@@ -360,23 +365,23 @@ export default function Login() {
     setSubmitError("");
 
     try {
-      // ── API INTEGRATION POINT ──────────────────────────────────────
-      // Replace the setTimeout below with your actual login API call.
-      // Example:
-      //   const response = await axios.post("/api/auth/login", {
-      //     email: form.email,
-      //     password: form.password,
-      //     rememberMe,
-      //   });
-      //   const { token, user } = response.data;
-      //   localStorage.setItem("token", token);
-      //   navigate("/dashboard");
-      // ──────────────────────────────────────────────────────────────
-      await new Promise((res) => setTimeout(res, 1800)); // simulated delay
-      // Simulated error for demo — remove when wiring real API:
-      // throw new Error("Invalid credentials. Please try again.");
+      const response = await authService.login({
+        email: form.email,
+        password: form.password,
+      });
+
+      localStorage.setItem("token", response.token);
+      localStorage.setItem("user", JSON.stringify(response.user));
+
+      if(response.user.role === "patient"){
+        navigate("/hospitals");
+      }else if(response.user.role === "staff"){
+        navigate("/staff");
+      }else{
+        navigate("/hospitals");
+      }
     } catch (err) {
-      setSubmitError(err.message || "Something went wrong. Please try again.");
+      setSubmitError(err.message);
     } finally {
       setIsLoading(false);
     }
@@ -624,9 +629,9 @@ export default function Login() {
                   </>
                 )}
               </button>
-              
+
               {/* May inculde this later */}
-              {/* Divider */} 
+              {/* Divider */}
               {/* <div className="relative my-2">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-gray-200" />

@@ -517,7 +517,7 @@ export default function Register() {
       setSuccess(true);
       navigate("/login");
     } catch (err) {
-      setSubmitError(err.message || "Registration failed. Please try again.");
+      setSubmitError(err.message);
     } finally {
       setIsLoading(false);
     }
