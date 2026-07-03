@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import Footer from "../components/Footer.jsx";
 import hospitalService from "../services/hospital.service.js";
+import { useNavigate } from "react-router-dom";
 
 const CITIES = ["All Cities", "Chennai", "Mumbai", "New Delhi", "Bengaluru", "Gurugram", "Vellore"];
 const SORT_OPTIONS = ["Default", "A → Z", "Z → A", "Most Departments"];
@@ -86,6 +87,7 @@ const StatusBadge = ({ status }) =>
 // ─── Hospital Card ────────────────────────────────────────────────────────────
 const HospitalCard = ({ hospital }) => {
   const [hovered, setHovered] = useState(false);
+  const navigate = useNavigate();
   return (
     <div
       className="bg-white rounded-2xl border border-gray-100 overflow-hidden flex flex-col transition-all duration-300 cursor-pointer"
@@ -95,6 +97,7 @@ const HospitalCard = ({ hospital }) => {
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onClick={()=> navigate(`/hospitals/${hospital._id}`)}
     >
       <div className="relative">
         <HospitalAvatar name={hospital.name} id={hospital._id} />
@@ -206,7 +209,6 @@ export default function Hospitals() {
   useEffect(() => {
     setLoading(true);
     const timer = setTimeout(async () => {
-      // Swap line below with: axios.get("/api/hospitals").then(r => setHospitals(r.data))
       const response = await hospitalService.getAllHospitals();
       console.log(response);
       setHospitals(response.hospitals);

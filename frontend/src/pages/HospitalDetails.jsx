@@ -173,7 +173,6 @@ function HospitalHero({ hospital }) {
                 ))}
               </div>
             </div>
-
           </div>
         </div>
       </div>
