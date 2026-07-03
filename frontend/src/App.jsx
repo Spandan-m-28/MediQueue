@@ -10,6 +10,7 @@ import HospitalDetails from "./pages/HospitalDetails.jsx";
 import QueueDetails from "./pages/QueueDetails.jsx";
 import Staff from "./pages/Staff.jsx";
 import StaffQueueDashboard from "./pages/StaffQueueDashboard.jsx";
+import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
 function App() {
   return (
@@ -19,13 +20,42 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        <Route path="/hospitals" element={<Hospitals />} />
-        <Route path="/hospitals/:id" element={<HospitalDetails/>}/>
+        <Route
+          path="/hospitals"
+          element={
+            <ProtectedRoute allowedRoles={["patient", "staff"]}>
+              <Hospitals />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/hospitals/:id"
+          element={
+            <ProtectedRoute allowedRoles={["patient", "staff"]}>
+              <HospitalDetails />
+            </ProtectedRoute>
+          }
+        />
 
-        <Route path="/queue/:id" element={<QueueDetails/>} />
+        <Route path="/queue/:id" element={
+          <ProtectedRoute allowedRoles={["patient","staff"]}>
+              <QueueDetails />
+            </ProtectedRoute>
+        } />
 
-        <Route path="/staff" element={<Staff/>} />
-        <Route path="/staff/queue/:id" element={<StaffQueueDashboard/>}/>
+        <Route
+          path="/staff"
+          element={
+            <ProtectedRoute allowedRoles={["staff"]}>
+              <Staff />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/staff/queue/:id" element={
+          <ProtectedRoute allowedRoles={["staff"]}>
+              <StaffQueueDashboard />
+            </ProtectedRoute>
+        } />
       </Routes>
     </>
   );

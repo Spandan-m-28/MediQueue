@@ -21,22 +21,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import Footer from "../components/Footer.jsx";
-
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-const MOCK_HOSPITALS = [
-  { id: 1, name: "Apollo Hospitals", address: "21 Greams Lane, Thousand Lights", city: "Chennai", phone: "+91 44 2829 0200", email: "info@apollochennai.com", departments: 34, status: "open", specialty: "Multi-Specialty" },
-  { id: 2, name: "Fortis Healthcare", address: "Mulund Goregaon Link Road", city: "Mumbai", phone: "+91 22 6799 2222", email: "care@fortis.in", departments: 28, status: "open", specialty: "Cardiac Care" },
-  { id: 3, name: "AIIMS New Delhi", address: "Sri Aurobindo Marg, Ansari Nagar", city: "New Delhi", phone: "+91 11 2659 3308", email: "aiims@gov.in", departments: 42, status: "open", specialty: "Research Hospital" },
-  { id: 4, name: "Narayana Health City", address: "258/A Bommasandra Industrial Area", city: "Bengaluru", phone: "+91 80 7122 2222", email: "contact@narayanahealth.org", departments: 31, status: "open", specialty: "Cardiac & Cancer" },
-  { id: 5, name: "Kokilaben Dhirubhai", address: "Rao Saheb Achutrao Patwardhan Marg", city: "Mumbai", phone: "+91 22 3066 1000", email: "info@kokilabenhospital.com", departments: 25, status: "closed", specialty: "Neurosciences" },
-  { id: 6, name: "Max Super Speciality", address: "1 Press Enclave Road, Saket", city: "New Delhi", phone: "+91 11 2651 5050", email: "help@maxhealthcare.in", departments: 29, status: "open", specialty: "Oncology" },
-  { id: 7, name: "Manipal Hospitals", address: "98 HAL Airport Road, Kodihalli", city: "Bengaluru", phone: "+91 80 2502 4444", email: "contact@manipalhospitals.com", departments: 36, status: "open", specialty: "Orthopaedics" },
-  { id: 8, name: "Medanta The Medicity", address: "CH Baktawar Singh Road, Sector 38", city: "Gurugram", phone: "+91 124 441 1441", email: "info@medanta.org", departments: 45, status: "open", specialty: "Multi-Specialty" },
-  { id: 9, name: "Tata Memorial Centre", address: "Dr. E. Borges Road, Parel", city: "Mumbai", phone: "+91 22 2417 7000", email: "tmc@tatamemorial.gov.in", departments: 18, status: "open", specialty: "Cancer Institute" },
-  { id: 10, name: "Christian Medical College", address: "Vellore – 632 004", city: "Vellore", phone: "+91 416 228 2010", email: "cmc@cmcvellore.ac.in", departments: 52, status: "open", specialty: "Teaching Hospital" },
-  { id: 11, name: "Lilavati Hospital", address: "A-791 Bandra Reclamation Road", city: "Mumbai", phone: "+91 22 2675 1000", email: "mail@lilavatihospital.com", departments: 22, status: "closed", specialty: "Critical Care" },
-  { id: 12, name: "Breach Candy Hospital", address: "60-A Bhulabhai Desai Road", city: "Mumbai", phone: "+91 22 2366 7809", email: "info@breachcandyhospital.org", departments: 19, status: "open", specialty: "Paediatrics" },
-];
+import hospitalService from "../services/hospital.service.js";
 
 const CITIES = ["All Cities", "Chennai", "Mumbai", "New Delhi", "Bengaluru", "Gurugram", "Vellore"];
 const SORT_OPTIONS = ["Default", "A → Z", "Z → A", "Most Departments"];
@@ -52,7 +37,8 @@ const HospitalAvatar = ({ name, id }) => {
     ["#FAF5FF", "#7C3AED"],
     ["#FFF1F2", "#E11D48"],
   ];
-  const [bg, text] = hues[id % hues.length];
+  const colorIndex = name.length % hues.length;
+  const [bg, text] = hues[colorIndex];
   const initials = name.split(" ").slice(0, 2).map((w) => w[0]).join("");
   return (
     <div className="w-full h-44 flex items-center justify-center rounded-t-2xl" style={{ background: bg }}>
@@ -87,12 +73,13 @@ const SkeletonCard = () => (
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 const StatusBadge = ({ status }) =>
   status === "open" ? (
-    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
-      <CheckCircle2 size={11} /> Open
-    </span>
-  ) : (
     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-600 border border-red-100">
       <XCircle size={11} /> Closed
+    </span>
+   
+  ) : (
+     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+      <CheckCircle2 size={11} /> Open
     </span>
   );
 
@@ -110,14 +97,9 @@ const HospitalCard = ({ hospital }) => {
       onMouseLeave={() => setHovered(false)}
     >
       <div className="relative">
-        <HospitalAvatar name={hospital.name} id={hospital.id} />
+        <HospitalAvatar name={hospital.name} id={hospital._id} />
         <div className="absolute top-3 right-3">
           <StatusBadge status={hospital.status} />
-        </div>
-        <div className="absolute bottom-3 left-3">
-          <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-white/80 backdrop-blur-sm text-gray-600 border border-white/60">
-            {hospital.specialty}
-          </span>
         </div>
       </div>
 
@@ -141,10 +123,6 @@ const HospitalCard = ({ hospital }) => {
           <div className="flex items-center gap-2 text-xs text-gray-500">
             <Mail size={12} className="text-purple-400 shrink-0" />
             <span className="truncate">{hospital.email}</span>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-gray-500">
-            <Building2 size={12} className="text-orange-400 shrink-0" />
-            <span>{hospital.departments} Departments</span>
           </div>
         </div>
 
@@ -227,9 +205,11 @@ export default function Hospitals() {
   // Simulate API fetch
   useEffect(() => {
     setLoading(true);
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
       // Swap line below with: axios.get("/api/hospitals").then(r => setHospitals(r.data))
-      setHospitals(MOCK_HOSPITALS);
+      const response = await hospitalService.getAllHospitals();
+      console.log(response);
+      setHospitals(response.hospitals);
       setLoading(false);
     }, 1400);
     return () => clearTimeout(timer);
@@ -432,7 +412,7 @@ export default function Hospitals() {
             ? Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
             : !error && paginated.length === 0
             ? <EmptyState query={query} />
-            : !error && paginated.map((h) => <HospitalCard key={h.id} hospital={h} />)
+            : !error && paginated.map((h) => <HospitalCard key={h._id} hospital={h} />)
           }
         </div>
 
