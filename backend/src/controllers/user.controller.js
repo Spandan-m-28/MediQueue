@@ -109,6 +109,7 @@ const loginUser = async (req, res) => {
         email: existingUser.email,
         name: existingUser.name,
         phone: existingUser.phone,
+        role: existingUser.role
       },
     });
   } catch (error) {
