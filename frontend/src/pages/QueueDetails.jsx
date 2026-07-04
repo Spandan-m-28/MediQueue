@@ -1,310 +1,421 @@
 import { useState, useEffect, useRef } from "react";
 import {
-  Stethoscope, Bell, User, ChevronDown, Menu, X, ChevronRight,
-  ArrowLeft, Clock, Users, Activity, CheckCircle2, XCircle,
-  AlertCircle, Timer, Calendar, Wifi, RefreshCw, Plus,
-  Hash, TrendingUp, Play, Pause, LogIn, Ticket, Zap,
-  CircleDot, Check, ArrowRight, Info, MapPin, Phone,
+  Stethoscope,
+  ChevronRight,
+  ArrowLeft,
+  Clock,
+  Users,
+  Activity,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  Timer,
+  Wifi,
+  RefreshCw,
+  Plus,
+  Hash,
+  Play,
+  Pause,
+  LogIn,
+  Ticket,
+  Zap,
+  Check,
+  ArrowRight,
+  Info,
+  MapPin,
+  User,
+  Calendar,
 } from "lucide-react";
-import Footer from "../components/Footer.jsx";
+import { useParams, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar.jsx";
+import Footer from "../components/Footer.jsx";
+// import queueService from "../services/queue.service.js";
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-const MOCK_QUEUE = {
-  id: "q-cardio-001",
-  departmentName: "Cardiology",
-  hospitalName: "Apollo Hospitals",
-  hospitalCity: "Chennai",
-  doctorName: "Dr. R. Krishnamurthy",
-  status: "active",
-  currentToken: 25,
-  totalPatients: 14,
-  avgConsultMins: 20,
-  startTime: "08:00 AM",
-  endTime: "02:00 PM",
-  tokensServed: 24,
-  totalCapacity: 40,
-  myToken: null, // set to a number if already joined
+// ─── Helpers ─────────────────────────────────────────────────
+function fmtTime(dateStr) {
+  if (!dateStr) return "—";
+  return new Date(dateStr).toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+function fmtDate(dateStr) {
+  if (!dateStr) return "—";
+  return new Date(dateStr).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function timeSince(dateStr) {
+  if (!dateStr) return "";
+  const diff = Math.floor((Date.now() - new Date(dateStr)) / 60000);
+  if (diff < 1) return "just now";
+  if (diff === 1) return "1 min ago";
+  return `${diff} min ago`;
+}
+
+// ─── Token status config ──────────────────────────────────────
+const TOKEN_STATUS_CONFIG = {
+  waiting: {
+    label: "Waiting",
+    bg: "bg-blue-50",
+    text: "text-blue-700",
+    border: "border-blue-100",
+  },
+  active: {
+    label: "Active",
+    bg: "bg-emerald-50",
+    text: "text-emerald-700",
+    border: "border-emerald-100",
+  },
+  completed: {
+    label: "Completed",
+    bg: "bg-gray-100",
+    text: "text-gray-500",
+    border: "border-gray-200",
+  },
+  missed: {
+    label: "Missed",
+    bg: "bg-amber-50",
+    text: "text-amber-700",
+    border: "border-amber-100",
+  },
+  cancelled: {
+    label: "Cancelled",
+    bg: "bg-red-50",
+    text: "text-red-600",
+    border: "border-red-100",
+  },
 };
 
-const MOCK_TIMELINE = [
-  { id: 1, type: "completed", token: 24, message: "Token #24 consultation completed", time: "11:42 AM", ago: "3 min ago" },
-  { id: 2, type: "called",    token: 25, message: "Token #25 called to counter",      time: "11:40 AM", ago: "5 min ago" },
-  { id: 3, type: "resumed",   token: null, message: "Queue resumed after break",      time: "11:30 AM", ago: "15 min ago" },
-  { id: 4, type: "joined",    token: 22, message: "New patient joined the queue",     time: "11:20 AM", ago: "25 min ago" },
-  { id: 5, type: "completed", token: 22, message: "Token #22 consultation completed", time: "11:15 AM", ago: "30 min ago" },
-  { id: 6, type: "called",    token: 23, message: "Token #23 called to counter",      time: "11:10 AM", ago: "35 min ago" },
-];
-
-// ─── Timeline icon/color config ───────────────────────────────────────────────
-const TIMELINE_CONFIG = {
-  completed: { Icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-50",  border: "border-emerald-100", label: "Completed" },
-  called:    { Icon: Zap,          color: "text-blue-500",    bg: "bg-blue-50",     border: "border-blue-100",    label: "Called"    },
-  resumed:   { Icon: Play,         color: "text-teal-500",    bg: "bg-teal-50",     border: "border-teal-100",    label: "Resumed"   },
-  joined:    { Icon: LogIn,        color: "text-purple-500",  bg: "bg-purple-50",   border: "border-purple-100",  label: "Joined"    },
+// ─── Queue status config ──────────────────────────────────────
+const QUEUE_STATUS_CONFIG = {
+  active: {
+    Icon: CheckCircle2,
+    text: "Active",
+    cls: "bg-emerald-50 text-emerald-700 border-emerald-100",
+  },
+  paused: {
+    Icon: Pause,
+    text: "Paused",
+    cls: "bg-amber-50   text-amber-700   border-amber-100",
+  },
+  closed: {
+    Icon: XCircle,
+    text: "Closed",
+    cls: "bg-red-50     text-red-700     border-red-100",
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════
 // REUSABLE COMPONENTS
 // ═══════════════════════════════════════════════════════════════
 
-// ─── StatusBadge ──────────────────────────────────────────────
-function StatusBadge({ status }) {
-  const map = {
-    active:  { icon: CheckCircle2, text: "Active",  cls: "bg-emerald-50 text-emerald-700 border-emerald-100" },
-    paused:  { icon: Pause,        text: "Paused",  cls: "bg-amber-50   text-amber-700   border-amber-100"   },
-    closed:  { icon: XCircle,      text: "Closed",  cls: "bg-red-50     text-red-700     border-red-100"     },
-    waiting: { icon: Clock,        text: "Waiting", cls: "bg-blue-50    text-blue-700    border-blue-100"    },
-  };
-  const cfg = map[status] || map.waiting;
-  const Icon = cfg.icon;
+function QueueStatusBadge({ status }) {
+  const cfg = QUEUE_STATUS_CONFIG[status] || QUEUE_STATUS_CONFIG.closed;
+  const Icon = cfg.Icon;
   return (
-    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${cfg.cls}`}>
+    <span
+      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${cfg.cls}`}
+    >
       <Icon size={11} />
       {cfg.text}
     </span>
   );
 }
 
-// ─── StatCard ─────────────────────────────────────────────────
-function StatCard({ icon: Icon, label, value, unit, color, bg, border, pulse }) {
+function TokenStatusBadge({ status }) {
+  const cfg = TOKEN_STATUS_CONFIG[status] || TOKEN_STATUS_CONFIG.waiting;
   return (
-    <div className={`bg-white rounded-2xl border border-gray-100 p-5 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 group`}>
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 border ${bg} ${border} transition-transform duration-300 group-hover:scale-110`}>
-        <Icon size={18} className={`${color} ${pulse ? "animate-pulse" : ""}`} />
+    <span
+      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${cfg.bg} ${cfg.text} ${cfg.border}`}
+    >
+      {cfg.label}
+    </span>
+  );
+}
+
+// ─── Stat Card ────────────────────────────────────────────────
+function StatCard({ icon: Icon, label, value, sub, color, bg, border, pulse }) {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-5 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 group">
+      <div
+        className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 border ${bg} ${border} transition-transform duration-300 group-hover:scale-110`}
+      >
+        <Icon
+          size={18}
+          className={`${color} ${pulse ? "animate-pulse" : ""}`}
+        />
       </div>
-      <div className="text-2xl font-bold text-gray-900">{value}</div>
+      <div className="text-2xl font-bold text-gray-900 tabular-nums">
+        {value}
+      </div>
       <div className="text-sm text-gray-500 mt-0.5">{label}</div>
-      {unit && <div className={`text-xs font-medium mt-1 ${color}`}>{unit}</div>}
+      {sub && <div className={`text-xs font-medium mt-1 ${color}`}>{sub}</div>}
     </div>
   );
 }
 
-// ─── PrimaryButton ────────────────────────────────────────────
-function PrimaryButton({ children, onClick, variant = "solid", size = "md", icon: Icon, disabled, loading }) {
-  const base = "inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed";
-  const sizes = { sm: "px-4 py-2 text-xs", md: "px-5 py-2.5 text-sm", lg: "px-7 py-3.5 text-base" };
-  const variants = {
-    solid:   "bg-blue-600 text-white hover:bg-blue-700 shadow-sm shadow-blue-200 hover:shadow-md hover:shadow-blue-200 hover:-translate-y-0.5",
-    outline: "border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white hover:-translate-y-0.5",
-    teal:    "bg-teal-500 text-white hover:bg-teal-600 shadow-sm shadow-teal-200 hover:shadow-md hover:-translate-y-0.5",
-    danger:  "bg-red-500 text-white hover:bg-red-600 shadow-sm shadow-red-200 hover:-translate-y-0.5",
-    ghost:   "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
-  };
-  return (
-    <button onClick={onClick} disabled={disabled || loading} className={`${base} ${sizes[size]} ${variants[variant]}`}>
-      {loading ? <RefreshCw size={15} className="animate-spin" /> : Icon ? <Icon size={15} /> : null}
-      {children}
-    </button>
-  );
-}
-
-// ─── LoadingSkeleton ──────────────────────────────────────────
+// ─── Loading Skeleton ─────────────────────────────────────────
 function LoadingSkeleton() {
   return (
     <div className="animate-pulse space-y-6">
-      {/* hero skeleton */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-6">
-        <div className="flex flex-col md:flex-row gap-6">
-          <div className="flex-1 space-y-3">
-            <div className="h-5 bg-gray-200 rounded-full w-32" />
-            <div className="h-8 bg-gray-200 rounded-full w-56" />
-            <div className="h-4 bg-gray-100 rounded-full w-44" />
-            <div className="flex gap-2 mt-4">
-              {[1,2,3].map(i => <div key={i} className="h-7 bg-gray-100 rounded-full w-24" />)}
-            </div>
-          </div>
-          <div className="w-full md:w-52 h-52 bg-gray-100 rounded-2xl" />
-        </div>
-      </div>
-      {/* stats skeleton */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-6 h-72" />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[1,2,3,4].map(i => (
-          <div key={i} className="bg-white rounded-2xl border border-gray-100 p-5">
+        {[1, 2, 3, 4].map((i) => (
+          <div
+            key={i}
+            className="bg-white rounded-2xl border border-gray-100 p-5 h-28"
+          >
             <div className="w-10 h-10 bg-gray-100 rounded-xl mb-3" />
-            <div className="h-7 bg-gray-200 rounded-full w-16 mb-2" />
+            <div className="h-6 bg-gray-200 rounded-full w-16 mb-2" />
             <div className="h-3 bg-gray-100 rounded-full w-20" />
           </div>
         ))}
       </div>
-      {/* card skeleton */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 p-6 h-80" />
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 h-80" />
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 h-80" />
+        <div className="bg-white rounded-2xl border border-gray-100 h-80" />
       </div>
     </div>
   );
 }
 
-// ─── EmptyState ───────────────────────────────────────────────
-function EmptyState({ title, subtitle, actionLabel, onAction }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mb-4">
-        <Activity size={28} className="text-blue-300" />
-      </div>
-      <h3 className="text-gray-800 font-semibold text-base mb-1">{title}</h3>
-      <p className="text-gray-400 text-sm mb-5 max-w-xs">{subtitle}</p>
-      {actionLabel && (
-        <PrimaryButton onClick={onAction}>{actionLabel}</PrimaryButton>
-      )}
-    </div>
-  );
-}
-
-// ─── ErrorState ───────────────────────────────────────────────
+// ─── Error State ──────────────────────────────────────────────
 function ErrorState({ onRetry }) {
   return (
     <div className="flex flex-col items-center justify-center py-32 text-center">
       <div className="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center mb-5">
         <AlertCircle size={34} className="text-red-300" />
       </div>
-      <h3 className="text-gray-800 font-semibold text-lg mb-1">Queue data unavailable</h3>
-      <p className="text-gray-400 text-sm mb-6 max-w-xs">We couldn't fetch the queue details. Check your connection and try again.</p>
-      <PrimaryButton onClick={onRetry} icon={RefreshCw}>Retry</PrimaryButton>
+      <h3 className="text-gray-800 font-semibold text-lg mb-1">
+        Queue data unavailable
+      </h3>
+      <p className="text-gray-400 text-sm mb-6 max-w-xs">
+        We couldn't fetch the queue details. Check your connection and try
+        again.
+      </p>
+      <button
+        onClick={onRetry}
+        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 active:scale-95 transition-all shadow-sm shadow-blue-200"
+      >
+        <RefreshCw size={14} /> Retry
+      </button>
     </div>
   );
 }
 
-// ─── SearchBar ────────────────────────────────────────────────
-function SearchBar({ value, onChange, placeholder }) {
-  return (
-    <div className="relative">
-      <Hash size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-      <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-        className="w-full h-10 pl-9 pr-4 rounded-xl border border-gray-200 bg-white text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all" />
-    </div>
-  );
-}
+// ─── Main Queue Card ──────────────────────────────────────────
+// queue shape (from your model):
+//   _id, departmentId (populated → name, averageConsultationTime, doctorNames, hospitalId → name, city)
+//   currentToken, totalTokens, queueStatus, startTime, endTime
+// myToken shape (from your Token model):
+//   _id, tokenNumber, status, estimatedWaitTime, createdAt
+function QueueSummaryCard({
+  queue,
+  dept,
+  hospital,
+  myToken,
+  onJoin,
+  onLeave,
+  joining,
+}) {
+  const progress =
+    queue.totalTokens > 0
+      ? Math.min(
+          100,
+          Math.round((queue.currentToken / queue.totalTokens) * 100),
+        )
+      : 0;
 
-// ─── FilterButton ─────────────────────────────────────────────
-function FilterButton({ label, active, onClick }) {
-  return (
-    <button onClick={onClick}
-      className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
-        active ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600"
-      }`}>
-      {label}
-    </button>
-  );
-}
-
-// ─── QueueSummaryCard (the big token display) ─────────────────
-function QueueSummaryCard({ queue, myToken, onJoin, onLeave, joining }) {
-  const progress = Math.round((queue.tokensServed / queue.totalCapacity) * 100);
-  const waitMins = queue.totalPatients * queue.avgConsultMins;
   const hasJoined = myToken !== null;
-
-  // animated token counter
-  const [displayToken, setDisplayToken] = useState(queue.currentToken);
-  useEffect(() => { setDisplayToken(queue.currentToken); }, [queue.currentToken]);
+  const aheadCount = hasJoined
+    ? Math.max(0, myToken.tokenNumber - queue.currentToken)
+    : 0;
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
-      style={{ boxShadow: "0 4px 24px -4px rgba(37,99,235,0.10)" }}>
-
-      {/* top gradient bar */}
-      <div className="h-1.5 bg-linear-to-r from-blue-600 via-teal-500 to-blue-400" />
+    <div
+      className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
+      style={{ boxShadow: "0 4px 24px -4px rgba(37,99,235,0.10)" }}
+    >
+      {/* gradient bar */}
+      <div className="h-1.5 bg-gradient-to-r from-blue-600 via-teal-500 to-blue-400" />
 
       <div className="p-6 md:p-8">
         <div className="flex flex-col lg:flex-row gap-8 items-start">
-
-          {/* LEFT — big token display */}
+          {/* LEFT — token + progress */}
           <div className="flex-1 w-full">
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Live Queue</span>
+              <div
+                className={`w-2 h-2 rounded-full ${queue.queueStatus === "active" ? "bg-emerald-400 animate-pulse" : "bg-gray-300"}`}
+              />
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-widest">
+                Live Queue
+              </span>
             </div>
 
             {/* Token spotlight */}
-            <div className="relative flex flex-col sm:flex-row items-start sm:items-end gap-6 mb-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-6 mb-6">
               <div className="relative">
                 <div className="absolute inset-0 bg-blue-600 rounded-3xl blur-xl opacity-10 scale-110" />
-                <div className="relative bg-linear-to-br from-blue-600 to-blue-700 rounded-3xl p-6 sm:p-8 text-white shadow-lg shadow-blue-200 min-w-35 text-center">
-                  <div className="text-xs font-semibold uppercase tracking-widest text-blue-200 mb-1">Current Token</div>
-                  <div className="text-6xl sm:text-7xl font-black leading-none tabular-nums">{displayToken}</div>
-                  <div className="mt-2"><StatusBadge status={queue.status} /></div>
+                <div className="relative bg-gradient-to-br from-blue-600 to-blue-700 rounded-3xl p-6 sm:p-8 text-white shadow-lg shadow-blue-200 min-w-[140px] text-center">
+                  <div className="text-xs font-semibold uppercase tracking-widest text-blue-200 mb-1">
+                    Current Token
+                  </div>
+                  <div className="text-6xl sm:text-7xl font-black leading-none tabular-nums">
+                    {queue.currentToken}
+                  </div>
+                  <div className="mt-2">
+                    <QueueStatusBadge status={queue.queueStatus} />
+                  </div>
                 </div>
               </div>
 
               <div className="flex flex-col gap-3">
+                {/* Total tokens issued */}
                 <div className="bg-gray-50 rounded-2xl px-5 py-3 border border-gray-100">
-                  <div className="text-xs text-gray-400 mb-0.5">Patients Waiting</div>
-                  <div className="text-3xl font-bold text-gray-900 tabular-nums">{queue.totalPatients}</div>
+                  <div className="text-xs text-gray-400 mb-0.5">
+                    Total Tokens
+                  </div>
+                  <div className="text-3xl font-bold text-gray-900 tabular-nums">
+                    {queue.totalTokens}
+                  </div>
                 </div>
+                {/* Remaining */}
                 <div className="bg-amber-50 rounded-2xl px-5 py-3 border border-amber-100">
-                  <div className="text-xs text-amber-500 mb-0.5 font-medium">Est. Wait</div>
-                  <div className="text-3xl font-bold text-amber-700 tabular-nums">{waitMins}<span className="text-base font-medium ml-1">min</span></div>
+                  <div className="text-xs text-amber-500 mb-0.5 font-medium">
+                    Remaining
+                  </div>
+                  <div className="text-3xl font-bold text-amber-700 tabular-nums">
+                    {Math.max(0, queue.totalTokens - queue.currentToken)}
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Progress bar */}
             <div className="mb-2 flex items-center justify-between text-xs text-gray-500">
-              <span>Queue Progress</span>
-              <span className="font-semibold text-blue-600">{progress}% complete</span>
+              <span>
+                Token {queue.currentToken} of {queue.totalTokens}
+              </span>
+              <span className="font-semibold text-blue-600">
+                {progress}% complete
+              </span>
             </div>
             <div className="h-3 bg-gray-100 rounded-full overflow-hidden mb-1">
               <div
-                className="h-full rounded-full bg-linear-to-r from-blue-500 to-teal-400 transition-all duration-700"
+                className="h-full rounded-full bg-gradient-to-r from-blue-500 to-teal-400 transition-all duration-700"
                 style={{ width: `${progress}%` }}
               />
             </div>
             <div className="flex justify-between text-xs text-gray-400 mt-1">
-              <span>{queue.tokensServed} served</span>
-              <span>{queue.totalCapacity} capacity</span>
+              <span>{queue.currentToken} served</span>
+              <span>{queue.totalTokens} total capacity</span>
             </div>
+
+            {/* Hours */}
+            {(queue.startTime || queue.endTime) && (
+              <div className="flex gap-3 mt-4">
+                {queue.startTime && (
+                  <div className="flex items-center gap-1.5 text-xs text-gray-500 bg-gray-50 border border-gray-100 px-3 py-1.5 rounded-xl">
+                    <Play size={11} className="text-gray-400" />
+                    Starts {fmtTime(queue.startTime)}
+                  </div>
+                )}
+                {queue.endTime && (
+                  <div className="flex items-center gap-1.5 text-xs text-gray-500 bg-gray-50 border border-gray-100 px-3 py-1.5 rounded-xl">
+                    <XCircle size={11} className="text-gray-400" />
+                    Ends {fmtTime(queue.endTime)}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* RIGHT — action panel */}
+          {/* RIGHT — join / my token panel */}
           <div className="w-full lg:w-72 shrink-0">
-            <div className={`rounded-2xl border p-6 ${hasJoined ? "bg-emerald-50 border-emerald-100" : "bg-blue-50 border-blue-100"}`}>
-
+            <div
+              className={`rounded-2xl border p-6 ${hasJoined ? "bg-emerald-50 border-emerald-100" : "bg-blue-50 border-blue-100"}`}
+            >
               {hasJoined ? (
+                /* ── Already joined ── */
                 <>
                   <div className="text-center mb-5">
                     <div className="w-14 h-14 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-emerald-200">
                       <Ticket size={26} className="text-emerald-600" />
                     </div>
-                    <div className="text-xs text-emerald-600 font-semibold uppercase tracking-widest mb-1">My Token</div>
-                    <div className="text-5xl font-black text-emerald-700 tabular-nums">{myToken}</div>
+                    <div className="text-xs text-emerald-600 font-semibold uppercase tracking-widest mb-1">
+                      My Token
+                    </div>
+                    <div className="text-5xl font-black text-emerald-700 tabular-nums">
+                      {myToken.tokenNumber}
+                    </div>
+                    <div className="mt-2">
+                      <TokenStatusBadge status={myToken.status} />
+                    </div>
                     <div className="mt-2 text-xs text-emerald-600 font-medium">
-                      {myToken - queue.currentToken > 0
-                        ? `${myToken - queue.currentToken} patients ahead of you`
-                        : "You're next! 🎉"
-                      }
+                      {aheadCount > 0
+                        ? `${aheadCount} patients ahead of you`
+                        : "You're next! 🎉"}
                     </div>
                   </div>
 
+                  {/* Estimated wait from Token model */}
                   <div className="bg-white rounded-xl p-3 border border-emerald-100 mb-4 text-center">
-                    <div className="text-xs text-gray-400 mb-0.5">Your estimated wait</div>
-                    <div className="text-xl font-bold text-gray-800">
-                      {Math.max(0, (myToken - queue.currentToken)) * queue.avgConsultMins} min
+                    <div className="text-xs text-gray-400 mb-0.5">
+                      Estimated wait time
                     </div>
+                    <div className="text-xl font-bold text-gray-800">
+                      {myToken.estimatedWaitTime != null
+                        ? `${myToken.estimatedWaitTime} min`
+                        : `~${aheadCount * (dept?.averageConsultationTime || 10)} min`}
+                    </div>
+                    {myToken.createdAt && (
+                      <div className="text-xs text-gray-400 mt-1">
+                        Joined at {fmtTime(myToken.createdAt)}
+                      </div>
+                    )}
                   </div>
 
-                  <PrimaryButton variant="danger" size="md" onClick={onLeave} className="w-full">
+                  <button
+                    onClick={onLeave}
+                    className="w-full py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 active:scale-95 transition-all shadow-sm shadow-red-200"
+                  >
                     Leave Queue
-                  </PrimaryButton>
-                  <p className="text-xs text-center text-emerald-500 mt-3">Keep this page open for live updates</p>
+                  </button>
+                  <p className="text-xs text-center text-emerald-500 mt-3">
+                    Keep this page open for live updates
+                  </p>
                 </>
               ) : (
+                /* ── Not joined ── */
                 <>
                   <div className="text-center mb-5">
                     <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-blue-200">
                       <Plus size={26} className="text-blue-600" />
                     </div>
-                    <h3 className="font-bold text-gray-900 text-base mb-1">Join the Queue</h3>
-                    <p className="text-xs text-gray-500 leading-relaxed">Get a token and monitor your position in real-time without waiting in-person.</p>
+                    <h3 className="font-bold text-gray-900 text-base mb-1">
+                      Join the Queue
+                    </h3>
+                    <p className="text-xs text-gray-500 leading-relaxed">
+                      Get a digital token and track your position in real-time.
+                    </p>
                   </div>
 
                   <div className="space-y-2 mb-5">
                     {[
-                      "Instant digital token",
+                      "Instant digital token issued",
                       "Live position tracking",
-                      "SMS alerts (coming soon)",
-                    ].map(f => (
-                      <div key={f} className="flex items-center gap-2 text-xs text-gray-600">
+                      "Estimated wait time shown",
+                    ].map((f) => (
+                      <div
+                        key={f}
+                        className="flex items-center gap-2 text-xs text-gray-600"
+                      >
                         <div className="w-4 h-4 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
                           <Check size={9} className="text-blue-600" />
                         </div>
@@ -313,21 +424,31 @@ function QueueSummaryCard({ queue, myToken, onJoin, onLeave, joining }) {
                     ))}
                   </div>
 
-                  <button onClick={onJoin} disabled={joining || queue.status !== "active"}
-                    className="w-full py-3.5 rounded-xl bg-blue-600 text-white font-bold text-sm flex items-center justify-center gap-2 hover:bg-blue-700 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-blue-200 hover:shadow-lg hover:shadow-blue-200 hover:-translate-y-0.5">
-                    {joining
-                      ? <><RefreshCw size={15} className="animate-spin" /> Joining…</>
-                      : <><LogIn size={15} /> Join Queue</>
-                    }
+                  <button
+                    onClick={onJoin}
+                    disabled={joining || queue.queueStatus !== "active"}
+                    className="w-full py-3.5 rounded-xl bg-blue-600 text-white font-bold text-sm flex items-center justify-center gap-2 hover:bg-blue-700 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-blue-200 hover:-translate-y-0.5"
+                  >
+                    {joining ? (
+                      <>
+                        <RefreshCw size={15} className="animate-spin" />{" "}
+                        Joining…
+                      </>
+                    ) : (
+                      <>
+                        <LogIn size={15} /> Join Queue
+                      </>
+                    )}
                   </button>
-                  {queue.status !== "active" && (
-                    <p className="text-xs text-center text-red-500 mt-2">Queue is currently {queue.status}</p>
+
+                  {queue.queueStatus !== "active" && (
+                    <p className="text-xs text-center text-red-500 mt-2 capitalize">
+                      Queue is currently {queue.queueStatus}
+                    </p>
                   )}
                 </>
               )}
             </div>
-
-            
           </div>
         </div>
       </div>
@@ -335,83 +456,174 @@ function QueueSummaryCard({ queue, myToken, onJoin, onLeave, joining }) {
   );
 }
 
-// ─── Queue Info Cards row ─────────────────────────────────────
-function QueueInfoCards({ queue }) {
-  const waitMins = queue.totalPatients * queue.avgConsultMins;
+// ─── Info Stat Cards row ──────────────────────────────────────
+// Uses fields from your Queue model directly
+function QueueStatCards({ queue }) {
+  const remaining = Math.max(0, queue.totalTokens - queue.currentToken);
   const cards = [
-    { icon: Hash,      label: "Current Token",   value: `#${queue.currentToken}`, unit: "now serving",     color: "text-blue-600",   bg: "bg-blue-50",   border: "border-blue-100",   pulse: false },
-    { icon: Users,     label: "Patients Waiting", value: queue.totalPatients,      unit: "in queue",        color: "text-purple-600", bg: "bg-purple-50", border: "border-purple-100", pulse: false },
-    { icon: Timer,     label: "Est. Wait Time",   value: `${waitMins}`,            unit: "minutes approx",  color: "text-amber-600",  bg: "bg-amber-50",  border: "border-amber-100",  pulse: false },
-    { icon: Activity,  label: "Queue Status",     value: queue.status,             unit: `${queue.tokensServed} served`, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100", pulse: true },
+    {
+      icon: Hash,
+      label: "Current Token",
+      value: queue.currentToken,
+      sub: "now serving",
+      color: "text-blue-600",
+      bg: "bg-blue-50",
+      border: "border-blue-100",
+      pulse: false,
+    },
+    {
+      icon: Users,
+      label: "Total Tokens",
+      value: queue.totalTokens,
+      sub: "total capacity",
+      color: "text-purple-600",
+      bg: "bg-purple-50",
+      border: "border-purple-100",
+      pulse: false,
+    },
+    {
+      icon: Timer,
+      label: "Remaining",
+      value: remaining,
+      sub: "tokens left",
+      color: "text-amber-600",
+      bg: "bg-amber-50",
+      border: "border-amber-100",
+      pulse: false,
+    },
+    {
+      icon: Activity,
+      label: "Queue Status",
+      value:
+        queue.queueStatus.charAt(0).toUpperCase() + queue.queueStatus.slice(1),
+      sub: `${queue.currentToken}/${queue.totalTokens} done`,
+      color:
+        queue.queueStatus === "active"
+          ? "text-emerald-600"
+          : queue.queueStatus === "paused"
+            ? "text-amber-600"
+            : "text-red-600",
+      bg:
+        queue.queueStatus === "active"
+          ? "bg-emerald-50"
+          : queue.queueStatus === "paused"
+            ? "bg-amber-50"
+            : "bg-red-50",
+      border:
+        queue.queueStatus === "active"
+          ? "border-emerald-100"
+          : queue.queueStatus === "paused"
+            ? "border-amber-100"
+            : "border-red-100",
+      pulse: queue.queueStatus === "active",
+    },
   ];
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      {cards.map(c => <StatCard key={c.label} {...c} />)}
+      {cards.map((c) => (
+        <StatCard key={c.label} {...c} />
+      ))}
     </div>
   );
 }
 
-// ─── Timeline ────────────────────────────────────────────────
-function ActivityTimeline({ events }) {
+// ─── My Token Detail Card (shown when joined, bottom panel) ───
+// Maps directly to Token model fields
+function MyTokenDetailCard({ myToken, queue }) {
+  if (!myToken) return null;
+  const aheadCount = Math.max(0, myToken.tokenNumber - queue.currentToken);
+  const cfg =
+    TOKEN_STATUS_CONFIG[myToken.status] || TOKEN_STATUS_CONFIG.waiting;
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
-      <div className="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
-        <div>
-          <h3 className="font-semibold text-gray-900 text-sm">Recent Activity</h3>
-          <p className="text-xs text-gray-400 mt-0.5">Live event log — ready for Socket.IO</p>
-        </div>
-        <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-full">
-          <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-          Live
-        </div>
-      </div>
-
-      <div className="divide-y divide-gray-50">
-        {events.length === 0 ? (
-          <EmptyState title="No activity yet" subtitle="Queue events will appear here in real-time." />
-        ) : events.map((ev, idx) => {
-          const cfg = TIMELINE_CONFIG[ev.type] || TIMELINE_CONFIG.joined;
-          const Icon = cfg.Icon;
-          return (
-            <div key={ev.id} className="px-5 py-3.5 flex items-start gap-3 hover:bg-gray-50 transition-colors">
-              {/* spine */}
-              <div className="flex flex-col items-center shrink-0 mt-0.5">
-                <div className={`w-8 h-8 rounded-xl flex items-center justify-center border ${cfg.bg} ${cfg.border}`}>
-                  <Icon size={14} className={cfg.color} />
-                </div>
-                {idx < events.length - 1 && <div className="w-px h-full min-h-4 bg-gray-100 mt-1" />}
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm text-gray-700 leading-snug">{ev.message}</p>
-                  <span className="text-xs text-gray-400 shrink-0 whitespace-nowrap">{ev.ago}</span>
-                </div>
-                <span className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-xs font-medium border ${cfg.bg} ${cfg.color} ${cfg.border}`}>
-                  {cfg.label}
-                </span>
-              </div>
+    <div
+      className="bg-white rounded-2xl border border-gray-100 p-5"
+      style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}
+    >
+      <h3 className="font-semibold text-gray-900 text-sm mb-4 flex items-center gap-2">
+        <Ticket size={15} className="text-emerald-600" />
+        My Token Details
+      </h3>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: "Token Number", value: `#${myToken.tokenNumber}` },
+          {
+            label: "Status",
+            value: <TokenStatusBadge status={myToken.status} />,
+          },
+          { label: "Patients Ahead", value: aheadCount },
+          {
+            label: "Est. Wait",
+            value:
+              myToken.estimatedWaitTime != null
+                ? `${myToken.estimatedWaitTime} min`
+                : "—",
+          },
+          { label: "Joined At", value: fmtTime(myToken.createdAt) },
+          {
+            label: "Queue ID",
+            value: `…${String(myToken.queueId).slice(-6)}`,
+            mono: true,
+          },
+          ...(myToken.completedAt
+            ? [{ label: "Completed At", value: fmtTime(myToken.completedAt) }]
+            : []),
+        ].map(({ label, value, mono }) => (
+          <div
+            key={label}
+            className="bg-gray-50 rounded-xl p-3 border border-gray-100"
+          >
+            <div className="text-xs text-gray-400 mb-1">{label}</div>
+            <div
+              className={`text-sm font-semibold text-gray-800 ${mono ? "font-mono" : ""}`}
+            >
+              {value}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
-// ─── Queue Side Panel ────────────────────────────────────────
-function QueueSidePanel({ queue }) {
+// ─── Department / Queue Info Side Panel ───────────────────────
+// dept comes from populated departmentId on queue
+function QueueSidePanel({ queue, dept, hospital }) {
   return (
     <div className="space-y-4">
-      {/* Department info */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-5" style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
-        <h3 className="font-semibold text-gray-900 text-sm mb-4">Department Info</h3>
+      {/* Dept info */}
+      <div
+        className="bg-white rounded-2xl border border-gray-100 p-5"
+        style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}
+      >
+        <h3 className="font-semibold text-gray-900 text-sm mb-4">Queue Info</h3>
         <div className="space-y-3">
           {[
-            { icon: Stethoscope, label: "Department", value: queue.departmentName },
-            { icon: MapPin,      label: "Hospital",   value: queue.hospitalName   },
-            { icon: User,        label: "Doctor",     value: queue.doctorName     },
-            { icon: Clock,       label: "Consult",    value: `~${queue.avgConsultMins} min avg` },
+            {
+              icon: Stethoscope,
+              label: "Department",
+              value: dept?.name || "—",
+            },
+            { icon: MapPin, label: "Hospital", value: hospital?.name || "—" },
+            { icon: MapPin, label: "City", value: hospital?.city || "—" },
+            {
+              icon: User,
+              label: "Doctor(s)",
+              value: dept?.doctorNames?.join(", ") || "—",
+            },
+            {
+              icon: Clock,
+              label: "Avg Consult",
+              value: dept?.averageConsultationTime
+                ? `${dept.averageConsultationTime} min`
+                : "—",
+            },
+            { icon: Calendar, label: "Date", value: fmtDate(queue.startTime) },
+            {
+              icon: Play,
+              label: "Start Time",
+              value: fmtTime(queue.startTime),
+            },
+            { icon: XCircle, label: "End Time", value: fmtTime(queue.endTime) },
           ].map(({ icon: Icon, label, value }) => (
             <div key={label} className="flex items-start gap-3">
               <div className="w-7 h-7 rounded-lg bg-gray-50 flex items-center justify-center border border-gray-100 shrink-0">
@@ -419,27 +631,32 @@ function QueueSidePanel({ queue }) {
               </div>
               <div className="min-w-0">
                 <div className="text-xs text-gray-400">{label}</div>
-                <div className="text-sm font-medium text-gray-800 truncate">{value}</div>
+                <div className="text-sm font-medium text-gray-800 truncate">
+                  {value}
+                </div>
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Quick tips */}
-      <div className="bg-linear-to-br from-blue-50 to-teal-50 rounded-2xl border border-blue-100 p-5">
+      {/* Tips */}
+      <div className="bg-gradient-to-br from-blue-50 to-teal-50 rounded-2xl border border-blue-100 p-5">
         <div className="flex items-center gap-2 mb-3">
           <Info size={14} className="text-blue-600" />
           <h3 className="font-semibold text-blue-900 text-sm">Tips</h3>
         </div>
         <ul className="space-y-2">
           {[
-            "Arrive 5 min before your turn.",
+            "Arrive 5 min before your token is called.",
             "Keep your token number handy.",
-            "Page auto-refreshes.",
-            "SMS alerts.",
-          ].map(tip => (
-            <li key={tip} className="flex items-start gap-2 text-xs text-blue-700">
+            "Page auto-refreshes every 30 s.",
+            "Don't close this tab to track live.",
+          ].map((tip) => (
+            <li
+              key={tip}
+              className="flex items-start gap-2 text-xs text-blue-700"
+            >
               <ArrowRight size={11} className="text-teal-500 mt-0.5 shrink-0" />
               {tip}
             </li>
@@ -450,88 +667,285 @@ function QueueSidePanel({ queue }) {
   );
 }
 
+// ─── Activity Timeline (placeholder, ready for Socket.IO) ─────
+const TIMELINE_CONFIG = {
+  completed: {
+    Icon: CheckCircle2,
+    color: "text-emerald-500",
+    bg: "bg-emerald-50",
+    border: "border-emerald-100",
+    label: "Completed",
+  },
+  called: {
+    Icon: Zap,
+    color: "text-blue-500",
+    bg: "bg-blue-50",
+    border: "border-blue-100",
+    label: "Called",
+  },
+  resumed: {
+    Icon: Play,
+    color: "text-teal-500",
+    bg: "bg-teal-50",
+    border: "border-teal-100",
+    label: "Resumed",
+  },
+  joined: {
+    Icon: LogIn,
+    color: "text-purple-500",
+    bg: "bg-purple-50",
+    border: "border-purple-100",
+    label: "Joined",
+  },
+  paused: {
+    Icon: Pause,
+    color: "text-amber-500",
+    bg: "bg-amber-50",
+    border: "border-amber-100",
+    label: "Paused",
+  },
+};
+
+function ActivityTimeline({ events }) {
+  return (
+    <div
+      className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
+      style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}
+    >
+      <div className="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
+        <div>
+          <h3 className="font-semibold text-gray-900 text-sm">
+            Recent Activity
+          </h3>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Live event log — ready for Socket.IO
+          </p>
+        </div>
+        <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-full">
+          <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+          Live
+        </div>
+      </div>
+
+      <div className="divide-y divide-gray-50">
+        {events.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mb-3">
+              <Activity size={22} className="text-blue-300" />
+            </div>
+            <p className="text-sm text-gray-500 font-medium">No activity yet</p>
+            <p className="text-xs text-gray-400 mt-1">
+              Queue events will appear here in real-time.
+            </p>
+          </div>
+        ) : (
+          events.map((ev, idx) => {
+            const cfg = TIMELINE_CONFIG[ev.type] || TIMELINE_CONFIG.joined;
+            const Icon = cfg.Icon;
+            return (
+              <div
+                key={ev.id}
+                className="px-5 py-3.5 flex items-start gap-3 hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex flex-col items-center shrink-0 mt-0.5">
+                  <div
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center border ${cfg.bg} ${cfg.border}`}
+                  >
+                    <Icon size={14} className={cfg.color} />
+                  </div>
+                  {idx < events.length - 1 && (
+                    <div className="w-px h-full min-h-4 bg-gray-100 mt-1" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm text-gray-700 leading-snug">
+                      {ev.message}
+                    </p>
+                    <span className="text-xs text-gray-400 shrink-0 whitespace-nowrap">
+                      {ev.ago}
+                    </span>
+                  </div>
+                  <span
+                    className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-xs font-medium border ${cfg.bg} ${cfg.color} ${cfg.border}`}
+                  >
+                    {cfg.label}
+                  </span>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════
 // MAIN PAGE
 // ═══════════════════════════════════════════════════════════════
 export default function QueueDetails() {
-  const [queue, setQueue]         = useState(null);
-  const [timeline, setTimeline]   = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState(false);
-  const [myToken, setMyToken]     = useState(null);
-  const [joining, setJoining]     = useState(false);
+  const { id } = useParams(); // queue _id from URL
+  const navigate = useNavigate();
+
+  // ── State ──
+  // queue  → your Queue model document
+  // dept   → populated departmentId (name, averageConsultationTime, doctorNames, hospitalId)
+  // hospital → populated hospitalId on dept (name, city)
+  // myToken → your Token model document (null if not joined)
+  // timeline → array of activity events (will come from Socket.IO later)
+  const [queue, setQueue] = useState(null);
+  const [dept, setDept] = useState(null);
+  const [hospital, setHospital] = useState(null);
+  const [myToken, setMyToken] = useState(null);
+  const [timeline, setTimeline] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [joining, setJoining] = useState(false);
   const [lastRefresh, setLastRefresh] = useState(new Date());
-  const [refreshing, setRefreshing]   = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const intervalRef = useRef(null);
 
-  const load = () => {
-    setLoading(true); setError(false);
-    const t = setTimeout(() => {
-      // Replace with: axios.get(`/api/queues/${id}`).then(r => { setQueue(r.data); setTimeline(...) })
-      setQueue(MOCK_QUEUE);
-      setTimeline(MOCK_TIMELINE);
-      setLoading(false);
+  // ── Load queue data ──
+  const load = async () => {
+    setLoading(true);
+    setError(false);
+    try {
+      // Expected API shape from your backend:
+      // GET /api/queues/:id
+      // {
+      //   success: true,
+      //   queue: {
+      //     _id, currentToken, totalTokens, queueStatus, startTime, endTime,
+      //     departmentId: {
+      //       _id, name, averageConsultationTime, doctorNames, isActive,
+      //       hospitalId: { _id, name, city, state, phone, email }
+      //     }
+      //   },
+      //   myToken: null | { _id, tokenNumber, status, estimatedWaitTime, createdAt, completedAt, queueId, patientId }
+      // }
+      const res = await queueService.getQueue(id);
+      const q = res.queue;
+
+      setQueue(q);
+      setDept(q.departmentId); // populated
+      setHospital(q.departmentId?.hospitalId); // populated
+      setMyToken(res.myToken || null); // null if patient hasn't joined
+
       setLastRefresh(new Date());
-    }, 1500);
-    return () => clearTimeout(t);
+    } catch (err) {
+      console.error(err);
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const silentRefresh = () => {
+  const silentRefresh = async () => {
     setRefreshing(true);
-    setTimeout(() => {
-      // Simulate token bump
-      setQueue(prev => prev ? { ...prev, currentToken: prev.currentToken } : prev);
+    try {
+      // Re-fetch queue only (lightweight poll until Socket.IO is wired)
+      const res = await queueService.getQueue(id);
+      setQueue(res.queue);
+      setMyToken(res.myToken || null);
       setLastRefresh(new Date());
+    } catch {
+      /* silent */
+    } finally {
       setRefreshing(false);
-    }, 600);
+    }
   };
 
   useEffect(() => {
-    const cleanup = load();
-    // Auto-refresh every 30s — replace with Socket.IO listener
+    load();
+    // Auto-refresh every 30s — replace body with socket.on("queue:update", ...) later
     intervalRef.current = setInterval(silentRefresh, 30000);
-    return () => { cleanup(); clearInterval(intervalRef.current); };
-  }, []);
+    return () => clearInterval(intervalRef.current);
+  }, [id]);
 
-  const handleJoin = () => {
+  // ── Join queue ──
+  // POST /api/queues/:id/join → returns { success, token: { Token document } }
+  const handleJoin = async () => {
     setJoining(true);
-    setTimeout(() => {
-      const newToken = (queue?.currentToken || 25) + queue.totalPatients + 1;
+    try {
+      const res = await queueService.joinQueue(id);
+      const newToken = res.token; // your Token model document
+
       setMyToken(newToken);
-      setQueue(prev => prev ? { ...prev, totalPatients: prev.totalPatients + 1 } : prev);
-      setTimeline(prev => [{
-        id: Date.now(), type: "joined", token: newToken,
-        message: `New patient joined the queue (Token #${newToken})`,
-        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        ago: "just now",
-      }, ...prev]);
+      setQueue((prev) =>
+        prev ? { ...prev, totalTokens: prev.totalTokens } : prev,
+      );
+
+      // Optimistically add to timeline
+      setTimeline((prev) => [
+        {
+          id: Date.now(),
+          type: "joined",
+          message: `You joined the queue (Token #${newToken.tokenNumber})`,
+          ago: "just now",
+        },
+        ...prev,
+      ]);
+    } catch (err) {
+      console.error(err);
+    } finally {
       setJoining(false);
-    }, 1200);
+    }
   };
 
-  const handleLeave = () => {
-    setMyToken(null);
-    setQueue(prev => prev ? { ...prev, totalPatients: Math.max(0, prev.totalPatients - 1) } : prev);
+  // ── Leave / cancel token ──
+  // PATCH /api/tokens/:tokenId/cancel → returns { success }
+  const handleLeave = async () => {
+    if (!myToken) return;
+    try {
+      await queueService.cancelToken(myToken._id);
+      setMyToken(null);
+      setTimeline((prev) => [
+        {
+          id: Date.now(),
+          type: "completed",
+          message: `Token #${myToken.tokenNumber} cancelled`,
+          ago: "just now",
+        },
+        ...prev,
+      ]);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const fmtTime = (d) => d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const fmtClock = (d) =>
+    d.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]" style={{ fontFamily: "'Inter', sans-serif" }}>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet" />
+    <div
+      className="min-h-screen bg-[#F8FAFC]"
+      style={{ fontFamily: "'Inter', sans-serif" }}
+    >
+      <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap"
+        rel="stylesheet"
+      />
 
-      <Navbar/>
+      <Navbar />
 
-      {/* ── Notice Banner ── */}
-      <div className="bg-linear-to-r from-blue-600 to-teal-500">
+      {/* ── Live Banner ── */}
+      <div className="bg-gradient-to-r from-blue-600 to-teal-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-white text-xs font-medium">
             <Wifi size={13} className="shrink-0 animate-pulse" />
-            <span>Real-time updates will appear automatically while this page is open.</span>
+            <span>
+              Real-time updates will appear automatically while this page is
+              open.
+            </span>
           </div>
-          <div className="flex items-center gap-2 text-white/80 text-xs shrink-0">
+          <div className="hidden sm:flex items-center gap-1.5 text-white/80 text-xs shrink-0">
             <RefreshCw size={11} className={refreshing ? "animate-spin" : ""} />
-            <span className="hidden sm:inline">Updated {fmtTime(lastRefresh)}</span>
+            <span>Updated {fmtClock(lastRefresh)}</span>
           </div>
         </div>
       </div>
@@ -539,13 +953,20 @@ export default function QueueDetails() {
       {/* ── Breadcrumb ── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div className="flex items-center gap-2 text-xs text-gray-400">
-          <a href="#" className="hover:text-blue-600 transition-colors">Home</a>
+          <a href="/" className="hover:text-blue-600 transition-colors">
+            Home
+          </a>
           <ChevronRight size={12} />
-          <a href="#" className="hover:text-blue-600 transition-colors">Hospitals</a>
+          <a
+            href="/hospitals"
+            className="hover:text-blue-600 transition-colors"
+          >
+            Hospitals
+          </a>
           <ChevronRight size={12} />
-          <a href="#" className="hover:text-blue-600 transition-colors">{loading ? "…" : queue?.hospitalName}</a>
-          <ChevronRight size={12} />
-          <span className="text-gray-700 font-medium">{loading ? "…" : queue?.departmentName} Queue</span>
+          <span className="text-gray-700 font-medium">
+            {loading ? "…" : `${dept?.name || ""} Queue`}
+          </span>
         </div>
       </div>
 
@@ -553,32 +974,49 @@ export default function QueueDetails() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-3">
-            <button className="w-9 h-9 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-blue-600 transition-all group">
-              <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
+            <button
+              onClick={() => navigate(-1)}
+              className="w-9 h-9 rounded-xl border border-gray-200 bg-white flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-blue-600 transition-all group shrink-0"
+            >
+              <ArrowLeft
+                size={16}
+                className="group-hover:-translate-x-0.5 transition-transform"
+              />
             </button>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-xl md:text-2xl font-bold text-gray-900">
-                  {loading ? "Loading queue…" : `${queue?.departmentName} Queue`}
+                  {loading ? "Loading queue…" : `${dept?.name || ""} Queue`}
                 </h1>
-                {!loading && queue && <StatusBadge status={queue.status} />}
+                {!loading && queue && (
+                  <QueueStatusBadge status={queue.queueStatus} />
+                )}
               </div>
-              {!loading && queue && (
-                <p className="text-sm text-gray-500 mt-0.5">{queue.hospitalName} · {queue.hospitalCity}</p>
+              {!loading && (hospital || dept) && (
+                <p className="text-sm text-gray-500 mt-0.5">
+                  {hospital?.name}
+                  {hospital?.city ? ` · ${hospital.city}` : ""}
+                </p>
               )}
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <button onClick={silentRefresh} disabled={refreshing}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-600 hover:border-blue-300 hover:text-blue-600 transition-all disabled:opacity-50">
-              <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
+            <button
+              onClick={silentRefresh}
+              disabled={refreshing}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-600 hover:border-blue-300 hover:text-blue-600 transition-all disabled:opacity-50"
+            >
+              <RefreshCw
+                size={14}
+                className={refreshing ? "animate-spin" : ""}
+              />
               <span className="hidden sm:inline">Refresh</span>
             </button>
             {myToken && (
               <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-sm font-semibold text-emerald-700">
                 <Ticket size={14} />
-                Token #{myToken}
+                Token #{myToken.tokenNumber}
               </div>
             )}
           </div>
@@ -587,13 +1025,28 @@ export default function QueueDetails() {
 
       {/* ── Main content ── */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16 space-y-6">
-        {loading ? <LoadingSkeleton /> : error ? <ErrorState onRetry={load} /> : (
+        {loading ? (
+          <LoadingSkeleton />
+        ) : error ? (
+          <ErrorState onRetry={load} />
+        ) : (
           <>
             {/* Big queue card */}
-            <QueueSummaryCard queue={queue} myToken={myToken} onJoin={handleJoin} onLeave={handleLeave} joining={joining} />
+            <QueueSummaryCard
+              queue={queue}
+              dept={dept}
+              hospital={hospital}
+              myToken={myToken}
+              onJoin={handleJoin}
+              onLeave={handleLeave}
+              joining={joining}
+            />
 
-            {/* Info cards row */}
-            <QueueInfoCards queue={queue} />
+            {/* Stat cards — all from Queue model */}
+            <QueueStatCards queue={queue} />
+
+            {/* My token detail row — all from Token model */}
+            {myToken && <MyTokenDetailCard myToken={myToken} queue={queue} />}
 
             {/* Timeline + Side panel */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -601,15 +1054,14 @@ export default function QueueDetails() {
                 <ActivityTimeline events={timeline} />
               </div>
               <div>
-                <QueueSidePanel queue={queue} />
+                <QueueSidePanel queue={queue} dept={dept} hospital={hospital} />
               </div>
             </div>
           </>
         )}
       </main>
 
-      {/* ── Footer ── */}
-      <Footer/>
+      <Footer />
     </div>
   );
 }
