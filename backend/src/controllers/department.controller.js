@@ -61,6 +61,7 @@ const createDepartment = async (req, res) => {
   }
 };
 
+// Get department by hospital Id
 const getDepartments = async (req, res) => {
   try {
     const { hospitalId } = req.params;
@@ -88,4 +89,32 @@ const getDepartments = async (req, res) => {
   }
 };
 
-export { createDepartment, getDepartments };
+const getDepartmentById = async (req, res) => {
+  try {
+    const { departmentId } = req.params;
+
+    const department = await Department.findById(departmentId).populate(
+      "hospitalId",
+      "name city",
+    );
+
+    if (!department) {
+      return res.status(404).json({
+        success: false,
+        message: "Department not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      department,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export { createDepartment, getDepartments ,getDepartmentById};
