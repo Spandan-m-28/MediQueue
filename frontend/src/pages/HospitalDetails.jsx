@@ -1,27 +1,49 @@
 import { useState, useEffect } from "react";
 import {
-  MapPin, Phone, Mail, Building2, ChevronRight, Stethoscope,
-  ArrowLeft, Activity, Heart, Brain, Bone, Eye, Baby, Shield, Zap,
-  AlertCircle, Timer, UserCheck, User, CheckCircle2, XCircle,
-  Calendar, Clock, Users, MapPinned,
+  MapPin,
+  Phone,
+  Mail,
+  Building2,
+  ChevronRight,
+  Stethoscope,
+  ArrowLeft,
+  Activity,
+  Heart,
+  Brain,
+  Bone,
+  Eye,
+  Baby,
+  Shield,
+  Zap,
+  AlertCircle,
+  Timer,
+  UserCheck,
+  User,
+  CheckCircle2,
+  XCircle,
+  Calendar,
+  Clock,
+  Users,
+  MapPinned,
 } from "lucide-react";
 import { useParams } from "react-router-dom";
 import Navbar from "../components/Navbar.jsx";
 import Footer from "../components/Footer.jsx";
 import hospitalService from "../services/hospital.service.js";
+import departmentService from "../services/department.service.js";
 
 // ─── Icon map for department names ───────────────────────────
 const DEPT_ICON_MAP = {
-  cardiology:       Heart,
-  neurology:        Brain,
-  orthopaedics:     Bone,
-  orthopedics:      Bone,
-  ophthalmology:    Eye,
-  paediatrics:      Baby,
-  pediatrics:       Baby,
+  cardiology: Heart,
+  neurology: Brain,
+  orthopaedics: Bone,
+  orthopedics: Bone,
+  ophthalmology: Eye,
+  paediatrics: Baby,
+  pediatrics: Baby,
   "general medicine": Activity,
-  oncology:         Shield,
-  emergency:        Zap,
+  oncology: Shield,
+  emergency: Zap,
 };
 
 function getDeptIcon(name = "") {
@@ -30,12 +52,12 @@ function getDeptIcon(name = "") {
 
 // ─── Dept icon background palette (cycles) ───────────────────
 const DEPT_COLORS = [
-  { bg: "bg-blue-50",   icon: "text-blue-600",   hover: "bg-blue-600"   },
-  { bg: "bg-teal-50",   icon: "text-teal-600",   hover: "bg-teal-600"   },
+  { bg: "bg-blue-50", icon: "text-blue-600", hover: "bg-blue-600" },
+  { bg: "bg-teal-50", icon: "text-teal-600", hover: "bg-teal-600" },
   { bg: "bg-purple-50", icon: "text-purple-600", hover: "bg-purple-600" },
-  { bg: "bg-amber-50",  icon: "text-amber-600",  hover: "bg-amber-600"  },
-  { bg: "bg-emerald-50",icon: "text-emerald-600",hover: "bg-emerald-600"},
-  { bg: "bg-rose-50",   icon: "text-rose-600",   hover: "bg-rose-600"   },
+  { bg: "bg-amber-50", icon: "text-amber-600", hover: "bg-amber-600" },
+  { bg: "bg-emerald-50", icon: "text-emerald-600", hover: "bg-emerald-600" },
+  { bg: "bg-rose-50", icon: "text-rose-600", hover: "bg-rose-600" },
 ];
 
 // ─── Skeletons ────────────────────────────────────────────────
@@ -51,7 +73,9 @@ function HeroSkeleton() {
               <div className="h-6 bg-gray-200 rounded-full w-56" />
               <div className="h-4 bg-gray-100 rounded-full w-40" />
               <div className="flex flex-wrap gap-2 mt-3">
-                {[1,2,3,4].map(i => <div key={i} className="h-7 bg-gray-100 rounded-full w-24" />)}
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="h-7 bg-gray-100 rounded-full w-24" />
+                ))}
               </div>
             </div>
           </div>
@@ -64,8 +88,11 @@ function HeroSkeleton() {
 function DeptSkeleton() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 animate-pulse">
-      {[1,2,3,4,5,6].map(i => (
-        <div key={i} className="bg-white rounded-2xl border border-gray-100 p-5">
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <div
+          key={i}
+          className="bg-white rounded-2xl border border-gray-100 p-5"
+        >
           <div className="w-12 h-12 bg-gray-100 rounded-xl mb-4" />
           <div className="h-4 bg-gray-200 rounded-full w-36 mb-2" />
           <div className="h-3 bg-gray-100 rounded-full w-28 mb-1" />
@@ -83,27 +110,26 @@ function HospitalHero({ hospital }) {
   const initials = hospital.name
     .split(" ")
     .slice(0, 2)
-    .map(w => w[0])
+    .map((w) => w[0])
     .join("")
     .toUpperCase();
 
   return (
     <div>
       {/* Cover strip */}
-      <div className="h-48 md:h-60 relative overflow-hidden bg-gradient-to-br from-blue-600/10 via-teal-500/5 to-blue-400/10">
+      <div className="h-48 md:h-60 relative overflow-hidden bg-linear-to-br from-blue-600/10 via-teal-500/5 to-blue-400/10">
         <div className="absolute inset-0 flex items-center justify-center opacity-5">
           <Stethoscope size={280} className="text-blue-900" />
         </div>
         <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-blue-600 opacity-10" />
         <div className="absolute -bottom-10 -left-10 w-44 h-44 rounded-full bg-teal-500 opacity-10" />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-white/20" />
+        <div className="absolute inset-0 bg-linear-to-b from-transparent to-white/20" />
       </div>
 
       {/* Info card */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="-mt-14 relative z-10 bg-white rounded-2xl border border-gray-100 shadow-lg p-5 sm:p-6">
           <div className="flex flex-col sm:flex-row gap-5">
-
             {/* Avatar */}
             <div className="w-20 h-20 shrink-0 rounded-2xl flex items-center justify-center text-2xl font-bold bg-blue-50 text-blue-600 border border-blue-100 shadow-sm">
               {initials}
@@ -118,17 +144,39 @@ function HospitalHero({ hospital }) {
               {/* Info pills */}
               <div className="flex flex-wrap gap-2 text-xs">
                 {[
-                  { Icon: MapPinned, value: `${hospital.city}, ${hospital.state}`,  color: "text-blue-500",   bg: "bg-blue-50"   },
-                  { Icon: Phone,     value: hospital.phone,                          color: "text-teal-500",   bg: "bg-teal-50"   },
-                  { Icon: Mail,      value: hospital.email,                          color: "text-purple-500", bg: "bg-purple-50" },
-                  { Icon: MapPin,    value: `Pincode: ${hospital.pincode}`,          color: "text-orange-500", bg: "bg-orange-50" },
+                  {
+                    Icon: MapPinned,
+                    value: `${hospital.city}, ${hospital.state}`,
+                    color: "text-blue-500",
+                    bg: "bg-blue-50",
+                  },
+                  {
+                    Icon: Phone,
+                    value: hospital.phone,
+                    color: "text-teal-500",
+                    bg: "bg-teal-50",
+                  },
+                  {
+                    Icon: Mail,
+                    value: hospital.email,
+                    color: "text-purple-500",
+                    bg: "bg-purple-50",
+                  },
+                  {
+                    Icon: MapPin,
+                    value: `Pincode: ${hospital.pincode}`,
+                    color: "text-orange-500",
+                    bg: "bg-orange-50",
+                  },
                 ].map(({ Icon, value, color, bg }) => (
                   <span
                     key={value}
                     className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-medium text-gray-600 border border-gray-100 ${bg}`}
                   >
                     <Icon size={12} className={color} />
-                    <span className="truncate max-w-[180px] sm:max-w-none">{value}</span>
+                    <span className="truncate max-w-45 sm:max-w-none">
+                      {value}
+                    </span>
                   </span>
                 ))}
               </div>
@@ -184,21 +232,27 @@ function InfoCards({ hospital, deptCount }) {
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      {cards.map(({ icon: Icon, label, value, sub, color, bg, border, small }) => (
-        <div
-          key={label}
-          className="bg-white rounded-2xl border border-gray-100 p-5 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 group"
-        >
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 border ${bg} ${border} group-hover:scale-110 transition-transform duration-300`}>
-            <Icon size={18} className={color} />
+      {cards.map(
+        ({ icon: Icon, label, value, sub, color, bg, border, small }) => (
+          <div
+            key={label}
+            className="bg-white rounded-2xl border border-gray-100 p-5 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 group"
+          >
+            <div
+              className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 border ${bg} ${border} group-hover:scale-110 transition-transform duration-300`}
+            >
+              <Icon size={18} className={color} />
+            </div>
+            <div
+              className={`font-bold text-gray-900 mb-0.5 ${small ? "text-sm break-all" : "text-xl"}`}
+            >
+              {value}
+            </div>
+            <div className="text-sm text-gray-500">{label}</div>
+            <div className={`text-xs font-medium mt-1 ${color}`}>{sub}</div>
           </div>
-          <div className={`font-bold text-gray-900 mb-0.5 ${small ? "text-sm break-all" : "text-xl"}`}>
-            {value}
-          </div>
-          <div className="text-sm text-gray-500">{label}</div>
-          <div className={`text-xs font-medium mt-1 ${color}`}>{sub}</div>
-        </div>
-      ))}
+        ),
+      )}
     </div>
   );
 }
@@ -216,7 +270,9 @@ function DepartmentCard({ dept, colorIndex, onViewQueue }) {
         boxShadow: hovered
           ? "0 16px 40px -8px rgba(37,99,235,0.14), 0 4px 12px -4px rgba(0,0,0,0.08)"
           : "0 1px 3px rgba(0,0,0,0.05)",
-        transform: hovered ? "translateY(-4px) scale(1.02)" : "translateY(0) scale(1)",
+        transform: hovered
+          ? "translateY(-4px) scale(1.02)"
+          : "translateY(0) scale(1)",
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -227,19 +283,29 @@ function DepartmentCard({ dept, colorIndex, onViewQueue }) {
           className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 ${hovered ? palette.hover : palette.bg}`}
           style={{ transform: hovered ? "rotate(-8deg)" : "rotate(0deg)" }}
         >
-          <IconComp size={22} className={hovered ? "text-white" : palette.icon} />
+          <IconComp
+            size={22}
+            className={hovered ? "text-white" : palette.icon}
+          />
         </div>
 
         {/* Active badge */}
-        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${
-          dept.isActive
-            ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-            : "bg-gray-100 text-gray-500 border-gray-200"
-        }`}>
-          {dept.isActive
-            ? <><CheckCircle2 size={10} /> Active</>
-            : <><XCircle size={10} /> Inactive</>
-          }
+        <span
+          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${
+            dept.isActive
+              ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+              : "bg-gray-100 text-gray-500 border-gray-200"
+          }`}
+        >
+          {dept.isActive ? (
+            <>
+              <CheckCircle2 size={10} /> Active
+            </>
+          ) : (
+            <>
+              <XCircle size={10} /> Inactive
+            </>
+          )}
         </span>
       </div>
 
@@ -253,7 +319,10 @@ function DepartmentCard({ dept, colorIndex, onViewQueue }) {
         {dept.doctorNames && dept.doctorNames.length > 0 ? (
           <div className="space-y-1">
             {dept.doctorNames.map((doc, i) => (
-              <div key={i} className="flex items-center gap-1.5 text-xs text-gray-500">
+              <div
+                key={i}
+                className="flex items-center gap-1.5 text-xs text-gray-500"
+              >
                 <User size={11} className="text-gray-400 shrink-0" />
                 <span className="truncate">{doc}</span>
               </div>
@@ -295,19 +364,29 @@ function DepartmentCard({ dept, colorIndex, onViewQueue }) {
 // ─── About Tab ────────────────────────────────────────────────
 function AboutSection({ hospital }) {
   const rows = [
-    { icon: Building2,  label: "Hospital Name",  value: hospital.name },
-    { icon: MapPinned,  label: "City",            value: hospital.city },
-    { icon: MapPin,     label: "State",           value: hospital.state },
-    { icon: MapPin,     label: "Full Address",    value: hospital.address },
-    { icon: MapPin,     label: "Pincode",         value: hospital.pincode },
-    { icon: Phone,      label: "Phone",           value: hospital.phone },
-    { icon: Mail,       label: "Email",           value: hospital.email },
-    { icon: Calendar,   label: "Registered On",   value: new Date(hospital.createdAt).toLocaleDateString("en-IN", { year: "numeric", month: "long", day: "numeric" }) },
+    { icon: Building2, label: "Hospital Name", value: hospital.name },
+    { icon: MapPinned, label: "City", value: hospital.city },
+    { icon: MapPin, label: "State", value: hospital.state },
+    { icon: MapPin, label: "Full Address", value: hospital.address },
+    { icon: MapPin, label: "Pincode", value: hospital.pincode },
+    { icon: Phone, label: "Phone", value: hospital.phone },
+    { icon: Mail, label: "Email", value: hospital.email },
+    {
+      icon: Calendar,
+      label: "Registered On",
+      value: new Date(hospital.createdAt).toLocaleDateString("en-IN", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }),
+    },
   ];
 
   return (
     <section className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-      <h2 className="text-lg font-bold text-gray-900 mb-5">About {hospital.name}</h2>
+      <h2 className="text-lg font-bold text-gray-900 mb-5">
+        About {hospital.name}
+      </h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {rows.map(({ icon: Icon, label, value }) => (
           <div key={label} className="flex items-start gap-3">
@@ -315,8 +394,12 @@ function AboutSection({ hospital }) {
               <Icon size={15} className="text-blue-600" />
             </div>
             <div className="min-w-0">
-              <div className="text-xs text-gray-400 font-medium uppercase tracking-wide">{label}</div>
-              <div className="text-sm font-semibold text-gray-800 mt-0.5 break-words">{value}</div>
+              <div className="text-xs text-gray-400 font-medium uppercase tracking-wide">
+                {label}
+              </div>
+              <div className="text-sm font-semibold text-gray-800 mt-0.5 wrap-break-word">
+                {value}
+              </div>
             </div>
           </div>
         ))}
@@ -332,9 +415,12 @@ function ErrorState({ onRetry }) {
       <div className="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center mb-5">
         <AlertCircle size={34} className="text-red-300" />
       </div>
-      <h3 className="text-gray-800 font-semibold text-lg mb-1">Couldn't load hospital</h3>
+      <h3 className="text-gray-800 font-semibold text-lg mb-1">
+        Couldn't load hospital
+      </h3>
       <p className="text-gray-400 text-sm mb-6 max-w-xs">
-        There was a problem fetching the details. Check your connection and try again.
+        There was a problem fetching the details. Check your connection and try
+        again.
       </p>
       <button
         onClick={onRetry}
@@ -353,7 +439,9 @@ function NoDepartments() {
       <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mb-4">
         <Building2 size={28} className="text-blue-300" />
       </div>
-      <h3 className="text-gray-700 font-semibold text-base mb-1">No departments found</h3>
+      <h3 className="text-gray-700 font-semibold text-base mb-1">
+        No departments found
+      </h3>
       <p className="text-gray-400 text-sm max-w-xs">
         No departments have been registered for this hospital yet.
       </p>
@@ -367,27 +455,20 @@ function NoDepartments() {
 export default function HospitalDetails() {
   const { id } = useParams();
 
-  const [hospital, setHospital]       = useState(null);
+  const [hospital, setHospital] = useState(null);
   const [departments, setDepartments] = useState([]);
-  const [loading, setLoading]         = useState(true);
-  const [error, setError]             = useState(false);
-  const [activeTab, setActiveTab]     = useState("departments");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [activeTab, setActiveTab] = useState("departments");
 
   const load = async () => {
     setLoading(true);
     setError(false);
     try {
-      // hospitalService.getHospital(id) should return the API response:
-      // { success: true, hospital: { _id, name, city, state, address, phone, email, pincode, createdAt, ... } }
-      const res = await hospitalService.getHospital(id);
-      setHospital(res.hospital);
-
-      // If you have a separate departments API, call it here:
-      // const deptRes = await hospitalService.getDepartments(id);
-      // setDepartments(deptRes.departments);
-      //
-      // For now we leave departments empty until you wire the API:
-      setDepartments([]);
+      const response = await hospitalService.getHospital(id);
+      setHospital(response.hospital);
+      const departments = await departmentService.getAllDepartments(id);
+      setDepartments(departments);
     } catch (err) {
       console.error(err);
       setError(true);
@@ -396,7 +477,9 @@ export default function HospitalDetails() {
     }
   };
 
-  useEffect(() => { load(); }, [id]);
+  useEffect(() => {
+    load();
+  }, [id]);
 
   // ── helper to navigate to queue page ──
   const handleViewQueue = (deptId) => {
@@ -407,7 +490,10 @@ export default function HospitalDetails() {
   const TABS = ["departments", "about"];
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div
+      className="min-h-screen bg-[#F8FAFC]"
+      style={{ fontFamily: "'Inter', sans-serif" }}
+    >
       <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
         rel="stylesheet"
@@ -418,9 +504,16 @@ export default function HospitalDetails() {
       {/* Breadcrumb */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div className="flex items-center gap-2 text-xs text-gray-400">
-          <a href="/" className="hover:text-blue-600 transition-colors">Home</a>
+          <a href="/" className="hover:text-blue-600 transition-colors">
+            Home
+          </a>
           <ChevronRight size={12} />
-          <a href="/hospitals" className="hover:text-blue-600 transition-colors">Hospitals</a>
+          <a
+            href="/hospitals"
+            className="hover:text-blue-600 transition-colors"
+          >
+            Hospitals
+          </a>
           <ChevronRight size={12} />
           <span className="text-gray-700 font-medium truncate max-w-xs">
             {loading ? "Loading…" : hospital?.name}
@@ -434,45 +527,48 @@ export default function HospitalDetails() {
           onClick={() => window.history.back()}
           className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-blue-600 transition-colors group"
         >
-          <ArrowLeft size={15} className="group-hover:-translate-x-0.5 transition-transform" />
+          <ArrowLeft
+            size={15}
+            className="group-hover:-translate-x-0.5 transition-transform"
+          />
           Back to Hospitals
         </button>
       </div>
 
       {/* Hero */}
-      {loading
-        ? <HeroSkeleton />
-        : error
-        ? null
-        : <HospitalHero hospital={hospital} />
-      }
+      {loading ? (
+        <HeroSkeleton />
+      ) : error ? null : (
+        <HospitalHero hospital={hospital} />
+      )}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 pb-16 space-y-8">
-
         {/* Info cards / error */}
-        {loading
-          ? (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-pulse">
-              {[1,2,3,4].map(i => (
-                <div key={i} className="bg-white rounded-2xl border border-gray-100 p-5 h-28">
-                  <div className="w-10 h-10 bg-gray-100 rounded-xl mb-3" />
-                  <div className="h-5 bg-gray-200 rounded-full w-20 mb-2" />
-                  <div className="h-3 bg-gray-100 rounded-full w-14" />
-                </div>
-              ))}
-            </div>
-          )
-          : error
-          ? <ErrorState onRetry={load} />
-          : <InfoCards hospital={hospital} deptCount={departments.length} />
-        }
+        {loading ? (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-pulse">
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="bg-white rounded-2xl border border-gray-100 p-5 h-28"
+              >
+                <div className="w-10 h-10 bg-gray-100 rounded-xl mb-3" />
+                <div className="h-5 bg-gray-200 rounded-full w-20 mb-2" />
+                <div className="h-3 bg-gray-100 rounded-full w-14" />
+              </div>
+            ))}
+          </div>
+        ) : error ? (
+          <ErrorState onRetry={load} />
+        ) : (
+          <InfoCards hospital={hospital} deptCount={departments.length} />
+        )}
 
         {/* Tabs + content */}
         {!loading && !error && (
           <>
             {/* Tab bar */}
             <div className="flex items-center gap-1 border-b border-gray-200">
-              {TABS.map(tab => (
+              {TABS.map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -484,9 +580,13 @@ export default function HospitalDetails() {
                 >
                   {tab}
                   {tab === "departments" && (
-                    <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full font-semibold ${
-                      activeTab === tab ? "bg-blue-100 text-blue-600" : "bg-gray-100 text-gray-500"
-                    }`}>
+                    <span
+                      className={`ml-2 text-xs px-1.5 py-0.5 rounded-full font-semibold ${
+                        activeTab === tab
+                          ? "bg-blue-100 text-blue-600"
+                          : "bg-gray-100 text-gray-500"
+                      }`}
+                    >
                       {departments.length}
                     </span>
                   )}
@@ -499,7 +599,9 @@ export default function HospitalDetails() {
               <section>
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <h2 className="text-xl font-bold text-gray-900">Departments</h2>
+                    <h2 className="text-xl font-bold text-gray-900">
+                      Departments
+                    </h2>
                     <p className="text-sm text-gray-500 mt-0.5">
                       All registered OPD departments for this hospital
                     </p>
@@ -529,9 +631,7 @@ export default function HospitalDetails() {
             )}
 
             {/* ── About Tab ── */}
-            {activeTab === "about" && (
-              <AboutSection hospital={hospital} />
-            )}
+            {activeTab === "about" && <AboutSection hospital={hospital} />}
           </>
         )}
       </div>
