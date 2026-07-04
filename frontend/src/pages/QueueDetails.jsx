@@ -29,9 +29,9 @@ import {
 import { useParams, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar.jsx";
 import Footer from "../components/Footer.jsx";
-// import queueService from "../services/queue.service.js";
+import queueService from "../services/queue.service.js";
 
-// ─── Helpers ─────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────
 function fmtTime(dateStr) {
   if (!dateStr) return "—";
   return new Date(dateStr).toLocaleTimeString("en-IN", {
@@ -40,7 +40,6 @@ function fmtTime(dateStr) {
     hour12: true,
   });
 }
-
 function fmtDate(dateStr) {
   if (!dateStr) return "—";
   return new Date(dateStr).toLocaleDateString("en-IN", {
@@ -49,17 +48,34 @@ function fmtDate(dateStr) {
     year: "numeric",
   });
 }
-
-function timeSince(dateStr) {
-  if (!dateStr) return "";
-  const diff = Math.floor((Date.now() - new Date(dateStr)) / 60000);
-  if (diff < 1) return "just now";
-  if (diff === 1) return "1 min ago";
-  return `${diff} min ago`;
+function fmtClock(d) {
+  return d.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
 }
 
-// ─── Token status config ──────────────────────────────────────
-const TOKEN_STATUS_CONFIG = {
+// ─── Status configs ───────────────────────────────────────────
+const QUEUE_STATUS_CFG = {
+  active: {
+    Icon: CheckCircle2,
+    label: "Active",
+    cls: "bg-emerald-50 text-emerald-700 border-emerald-100",
+  },
+  paused: {
+    Icon: Pause,
+    label: "Paused",
+    cls: "bg-amber-50   text-amber-700   border-amber-100",
+  },
+  closed: {
+    Icon: XCircle,
+    label: "Closed",
+    cls: "bg-red-50     text-red-700     border-red-100",
+  },
+};
+
+const TOKEN_STATUS_CFG = {
   waiting: {
     label: "Waiting",
     bg: "bg-blue-50",
@@ -92,44 +108,62 @@ const TOKEN_STATUS_CONFIG = {
   },
 };
 
-// ─── Queue status config ──────────────────────────────────────
-const QUEUE_STATUS_CONFIG = {
-  active: {
+const TIMELINE_CFG = {
+  completed: {
     Icon: CheckCircle2,
-    text: "Active",
-    cls: "bg-emerald-50 text-emerald-700 border-emerald-100",
+    color: "text-emerald-500",
+    bg: "bg-emerald-50",
+    border: "border-emerald-100",
+    label: "Completed",
+  },
+  called: {
+    Icon: Zap,
+    color: "text-blue-500",
+    bg: "bg-blue-50",
+    border: "border-blue-100",
+    label: "Called",
+  },
+  joined: {
+    Icon: LogIn,
+    color: "text-purple-500",
+    bg: "bg-purple-50",
+    border: "border-purple-100",
+    label: "Joined",
   },
   paused: {
     Icon: Pause,
-    text: "Paused",
-    cls: "bg-amber-50   text-amber-700   border-amber-100",
+    color: "text-amber-500",
+    bg: "bg-amber-50",
+    border: "border-amber-100",
+    label: "Paused",
   },
-  closed: {
-    Icon: XCircle,
-    text: "Closed",
-    cls: "bg-red-50     text-red-700     border-red-100",
+  resumed: {
+    Icon: Play,
+    color: "text-teal-500",
+    bg: "bg-teal-50",
+    border: "border-teal-100",
+    label: "Resumed",
   },
 };
 
 // ═══════════════════════════════════════════════════════════════
-// REUSABLE COMPONENTS
+// SMALL REUSABLE UI
 // ═══════════════════════════════════════════════════════════════
 
 function QueueStatusBadge({ status }) {
-  const cfg = QUEUE_STATUS_CONFIG[status] || QUEUE_STATUS_CONFIG.closed;
+  const cfg = QUEUE_STATUS_CFG[status] || QUEUE_STATUS_CFG.closed;
   const Icon = cfg.Icon;
   return (
     <span
       className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${cfg.cls}`}
     >
-      <Icon size={11} />
-      {cfg.text}
+      <Icon size={11} /> {cfg.label}
     </span>
   );
 }
 
 function TokenStatusBadge({ status }) {
-  const cfg = TOKEN_STATUS_CONFIG[status] || TOKEN_STATUS_CONFIG.waiting;
+  const cfg = TOKEN_STATUS_CFG[status] || TOKEN_STATUS_CFG.waiting;
   return (
     <span
       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${cfg.bg} ${cfg.text} ${cfg.border}`}
@@ -139,12 +173,11 @@ function TokenStatusBadge({ status }) {
   );
 }
 
-// ─── Stat Card ────────────────────────────────────────────────
 function StatCard({ icon: Icon, label, value, sub, color, bg, border, pulse }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-5 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 group">
       <div
-        className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 border ${bg} ${border} transition-transform duration-300 group-hover:scale-110`}
+        className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 border ${bg} ${border} group-hover:scale-110 transition-transform duration-300`}
       >
         <Icon
           size={18}
@@ -160,7 +193,7 @@ function StatCard({ icon: Icon, label, value, sub, color, bg, border, pulse }) {
   );
 }
 
-// ─── Loading Skeleton ─────────────────────────────────────────
+// ─── Skeletons ────────────────────────────────────────────────
 function LoadingSkeleton() {
   return (
     <div className="animate-pulse space-y-6">
@@ -178,14 +211,13 @@ function LoadingSkeleton() {
         ))}
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 h-80" />
-        <div className="bg-white rounded-2xl border border-gray-100 h-80" />
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 h-64" />
+        <div className="bg-white rounded-2xl border border-gray-100 h-64" />
       </div>
     </div>
   );
 }
 
-// ─── Error State ──────────────────────────────────────────────
 function ErrorState({ onRetry }) {
   return (
     <div className="flex flex-col items-center justify-center py-32 text-center">
@@ -209,21 +241,15 @@ function ErrorState({ onRetry }) {
   );
 }
 
-// ─── Main Queue Card ──────────────────────────────────────────
-// queue shape (from your model):
-//   _id, departmentId (populated → name, averageConsultationTime, doctorNames, hospitalId → name, city)
-//   currentToken, totalTokens, queueStatus, startTime, endTime
-// myToken shape (from your Token model):
-//   _id, tokenNumber, status, estimatedWaitTime, createdAt
-function QueueSummaryCard({
-  queue,
-  dept,
-  hospital,
-  myToken,
-  onJoin,
-  onLeave,
-  joining,
-}) {
+// ═══════════════════════════════════════════════════════════════
+// QUEUE SUMMARY CARD
+// queue  → raw Queue document from getQueue controller
+//           { _id, departmentId (ObjectId only), currentToken, totalTokens, queueStatus, startTime, endTime }
+// dept   → Department document from separate getDepartmentByQueue call
+//           { _id, name, averageConsultationTime, doctorNames, hospitalId: { name, city } }
+// myToken → null | { tokenNumber, estimatedWaitTime, status } built locally after joinQueue
+// ═══════════════════════════════════════════════════════════════
+function QueueSummaryCard({ queue, dept, myToken, onJoin, onLeave, joining }) {
   const progress =
     queue.totalTokens > 0
       ? Math.min(
@@ -231,10 +257,10 @@ function QueueSummaryCard({
           Math.round((queue.currentToken / queue.totalTokens) * 100),
         )
       : 0;
-
+  const remaining = Math.max(0, queue.totalTokens - queue.currentToken);
   const hasJoined = myToken !== null;
   const aheadCount = hasJoined
-    ? Math.max(0, myToken.tokenNumber - queue.currentToken)
+    ? Math.max(0, myToken.tokenNumber - queue.currentToken - 1)
     : 0;
 
   return (
@@ -242,8 +268,7 @@ function QueueSummaryCard({
       className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
       style={{ boxShadow: "0 4px 24px -4px rgba(37,99,235,0.10)" }}
     >
-      {/* gradient bar */}
-      <div className="h-1.5 bg-gradient-to-r from-blue-600 via-teal-500 to-blue-400" />
+      <div className="h-1.5 bg-linear-to-r from-blue-600 via-teal-500 to-blue-400" />
 
       <div className="p-6 md:p-8">
         <div className="flex flex-col lg:flex-row gap-8 items-start">
@@ -262,7 +287,7 @@ function QueueSummaryCard({
             <div className="flex flex-col sm:flex-row items-start sm:items-end gap-6 mb-6">
               <div className="relative">
                 <div className="absolute inset-0 bg-blue-600 rounded-3xl blur-xl opacity-10 scale-110" />
-                <div className="relative bg-gradient-to-br from-blue-600 to-blue-700 rounded-3xl p-6 sm:p-8 text-white shadow-lg shadow-blue-200 min-w-[140px] text-center">
+                <div className="relative bg-linear-to-br from-blue-600 to-blue-700 rounded-3xl p-6 sm:p-8 text-white shadow-lg shadow-blue-200 min-w-35 text-center">
                   <div className="text-xs font-semibold uppercase tracking-widest text-blue-200 mb-1">
                     Current Token
                   </div>
@@ -276,7 +301,6 @@ function QueueSummaryCard({
               </div>
 
               <div className="flex flex-col gap-3">
-                {/* Total tokens issued */}
                 <div className="bg-gray-50 rounded-2xl px-5 py-3 border border-gray-100">
                   <div className="text-xs text-gray-400 mb-0.5">
                     Total Tokens
@@ -285,19 +309,18 @@ function QueueSummaryCard({
                     {queue.totalTokens}
                   </div>
                 </div>
-                {/* Remaining */}
                 <div className="bg-amber-50 rounded-2xl px-5 py-3 border border-amber-100">
                   <div className="text-xs text-amber-500 mb-0.5 font-medium">
                     Remaining
                   </div>
                   <div className="text-3xl font-bold text-amber-700 tabular-nums">
-                    {Math.max(0, queue.totalTokens - queue.currentToken)}
+                    {remaining}
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Progress bar */}
+            {/* Progress */}
             <div className="mb-2 flex items-center justify-between text-xs text-gray-500">
               <span>
                 Token {queue.currentToken} of {queue.totalTokens}
@@ -308,41 +331,41 @@ function QueueSummaryCard({
             </div>
             <div className="h-3 bg-gray-100 rounded-full overflow-hidden mb-1">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-blue-500 to-teal-400 transition-all duration-700"
+                className="h-full rounded-full bg-linear-to-r from-blue-500 to-teal-400 transition-all duration-700"
                 style={{ width: `${progress}%` }}
               />
             </div>
             <div className="flex justify-between text-xs text-gray-400 mt-1">
               <span>{queue.currentToken} served</span>
-              <span>{queue.totalTokens} total capacity</span>
+              <span>{queue.totalTokens} capacity</span>
             </div>
 
-            {/* Hours */}
+            {/* Hours strip */}
             {(queue.startTime || queue.endTime) && (
-              <div className="flex gap-3 mt-4">
+              <div className="flex gap-3 mt-4 flex-wrap">
                 {queue.startTime && (
                   <div className="flex items-center gap-1.5 text-xs text-gray-500 bg-gray-50 border border-gray-100 px-3 py-1.5 rounded-xl">
-                    <Play size={11} className="text-gray-400" />
-                    Starts {fmtTime(queue.startTime)}
+                    <Play size={11} className="text-gray-400" /> Starts{" "}
+                    {fmtTime(queue.startTime)}
                   </div>
                 )}
                 {queue.endTime && (
                   <div className="flex items-center gap-1.5 text-xs text-gray-500 bg-gray-50 border border-gray-100 px-3 py-1.5 rounded-xl">
-                    <XCircle size={11} className="text-gray-400" />
-                    Ends {fmtTime(queue.endTime)}
+                    <XCircle size={11} className="text-gray-400" /> Ends{" "}
+                    {fmtTime(queue.endTime)}
                   </div>
                 )}
               </div>
             )}
           </div>
 
-          {/* RIGHT — join / my token panel */}
+          {/* RIGHT — join / my-token panel */}
           <div className="w-full lg:w-72 shrink-0">
             <div
               className={`rounded-2xl border p-6 ${hasJoined ? "bg-emerald-50 border-emerald-100" : "bg-blue-50 border-blue-100"}`}
             >
               {hasJoined ? (
-                /* ── Already joined ── */
+                /* ─ Already joined ─ */
                 <>
                   <div className="text-center mb-5">
                     <div className="w-14 h-14 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-emerald-200">
@@ -351,6 +374,7 @@ function QueueSummaryCard({
                     <div className="text-xs text-emerald-600 font-semibold uppercase tracking-widest mb-1">
                       My Token
                     </div>
+                    {/* tokenNumber comes from joinQueue response */}
                     <div className="text-5xl font-black text-emerald-700 tabular-nums">
                       {myToken.tokenNumber}
                     </div>
@@ -364,7 +388,7 @@ function QueueSummaryCard({
                     </div>
                   </div>
 
-                  {/* Estimated wait from Token model */}
+                  {/* estimatedWaitTime comes directly from joinQueue response */}
                   <div className="bg-white rounded-xl p-3 border border-emerald-100 mb-4 text-center">
                     <div className="text-xs text-gray-400 mb-0.5">
                       Estimated wait time
@@ -372,13 +396,8 @@ function QueueSummaryCard({
                     <div className="text-xl font-bold text-gray-800">
                       {myToken.estimatedWaitTime != null
                         ? `${myToken.estimatedWaitTime} min`
-                        : `~${aheadCount * (dept?.averageConsultationTime || 10)} min`}
+                        : "—"}
                     </div>
-                    {myToken.createdAt && (
-                      <div className="text-xs text-gray-400 mt-1">
-                        Joined at {fmtTime(myToken.createdAt)}
-                      </div>
-                    )}
                   </div>
 
                   <button
@@ -392,7 +411,7 @@ function QueueSummaryCard({
                   </p>
                 </>
               ) : (
-                /* ── Not joined ── */
+                /* ─ Not joined ─ */
                 <>
                   <div className="text-center mb-5">
                     <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-blue-200">
@@ -456,92 +475,90 @@ function QueueSummaryCard({
   );
 }
 
-// ─── Info Stat Cards row ──────────────────────────────────────
-// Uses fields from your Queue model directly
+// ─── Stat cards — fields from Queue model only ────────────────
 function QueueStatCards({ queue }) {
   const remaining = Math.max(0, queue.totalTokens - queue.currentToken);
-  const cards = [
-    {
-      icon: Hash,
-      label: "Current Token",
-      value: queue.currentToken,
-      sub: "now serving",
-      color: "text-blue-600",
-      bg: "bg-blue-50",
-      border: "border-blue-100",
-      pulse: false,
+  const qCfg = {
+    active: {
+      color: "text-emerald-600",
+      bg: "bg-emerald-50",
+      border: "border-emerald-100",
     },
-    {
-      icon: Users,
-      label: "Total Tokens",
-      value: queue.totalTokens,
-      sub: "total capacity",
-      color: "text-purple-600",
-      bg: "bg-purple-50",
-      border: "border-purple-100",
-      pulse: false,
-    },
-    {
-      icon: Timer,
-      label: "Remaining",
-      value: remaining,
-      sub: "tokens left",
+    paused: {
       color: "text-amber-600",
       bg: "bg-amber-50",
       border: "border-amber-100",
-      pulse: false,
     },
-    {
-      icon: Activity,
-      label: "Queue Status",
-      value:
-        queue.queueStatus.charAt(0).toUpperCase() + queue.queueStatus.slice(1),
-      sub: `${queue.currentToken}/${queue.totalTokens} done`,
-      color:
-        queue.queueStatus === "active"
-          ? "text-emerald-600"
-          : queue.queueStatus === "paused"
-            ? "text-amber-600"
-            : "text-red-600",
-      bg:
-        queue.queueStatus === "active"
-          ? "bg-emerald-50"
-          : queue.queueStatus === "paused"
-            ? "bg-amber-50"
-            : "bg-red-50",
-      border:
-        queue.queueStatus === "active"
-          ? "border-emerald-100"
-          : queue.queueStatus === "paused"
-            ? "border-amber-100"
-            : "border-red-100",
-      pulse: queue.queueStatus === "active",
+    closed: {
+      color: "text-red-600",
+      bg: "bg-red-50",
+      border: "border-red-100",
     },
-  ];
+  }[queue.queueStatus] || {
+    color: "text-gray-600",
+    bg: "bg-gray-50",
+    border: "border-gray-100",
+  };
+
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      {cards.map((c) => (
-        <StatCard key={c.label} {...c} />
-      ))}
+      <StatCard
+        icon={Hash}
+        label="Current Token"
+        value={queue.currentToken}
+        sub="now serving"
+        color="text-blue-600"
+        bg="bg-blue-50"
+        border="border-blue-100"
+        pulse={false}
+      />
+      <StatCard
+        icon={Users}
+        label="Total Tokens"
+        value={queue.totalTokens}
+        sub="total issued"
+        color="text-purple-600"
+        bg="bg-purple-50"
+        border="border-purple-100"
+        pulse={false}
+      />
+      <StatCard
+        icon={Timer}
+        label="Remaining"
+        value={remaining}
+        sub="tokens left"
+        color="text-amber-600"
+        bg="bg-amber-50"
+        border="border-amber-100"
+        pulse={false}
+      />
+      <StatCard
+        icon={Activity}
+        label="Queue Status"
+        value={
+          queue.queueStatus.charAt(0).toUpperCase() + queue.queueStatus.slice(1)
+        }
+        sub={`${queue.currentToken}/${queue.totalTokens} done`}
+        {...qCfg}
+        pulse={queue.queueStatus === "active"}
+      />
     </div>
   );
 }
 
-// ─── My Token Detail Card (shown when joined, bottom panel) ───
-// Maps directly to Token model fields
-function MyTokenDetailCard({ myToken, queue }) {
+// ─── My Token detail card — fields from joinQueue response ────
+// joinQueue returns: { success, message, tokenNumber, estimatedWaitTime }
+// We store this shape in myToken state
+function MyTokenCard({ myToken, queue }) {
   if (!myToken) return null;
-  const aheadCount = Math.max(0, myToken.tokenNumber - queue.currentToken);
-  const cfg =
-    TOKEN_STATUS_CONFIG[myToken.status] || TOKEN_STATUS_CONFIG.waiting;
+  const aheadCount = Math.max(0, myToken.tokenNumber - queue.currentToken - 1);
   return (
     <div
       className="bg-white rounded-2xl border border-gray-100 p-5"
       style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}
     >
       <h3 className="font-semibold text-gray-900 text-sm mb-4 flex items-center gap-2">
-        <Ticket size={15} className="text-emerald-600" />
-        My Token Details
+        <Ticket size={15} className="text-emerald-600" /> My Token Details
       </h3>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
@@ -552,32 +569,19 @@ function MyTokenDetailCard({ myToken, queue }) {
           },
           { label: "Patients Ahead", value: aheadCount },
           {
-            label: "Est. Wait",
+            label: "Estimated Wait",
             value:
               myToken.estimatedWaitTime != null
                 ? `${myToken.estimatedWaitTime} min`
                 : "—",
           },
-          { label: "Joined At", value: fmtTime(myToken.createdAt) },
-          {
-            label: "Queue ID",
-            value: `…${String(myToken.queueId).slice(-6)}`,
-            mono: true,
-          },
-          ...(myToken.completedAt
-            ? [{ label: "Completed At", value: fmtTime(myToken.completedAt) }]
-            : []),
-        ].map(({ label, value, mono }) => (
+        ].map(({ label, value }) => (
           <div
             key={label}
             className="bg-gray-50 rounded-xl p-3 border border-gray-100"
           >
             <div className="text-xs text-gray-400 mb-1">{label}</div>
-            <div
-              className={`text-sm font-semibold text-gray-800 ${mono ? "font-mono" : ""}`}
-            >
-              {value}
-            </div>
+            <div className="text-sm font-semibold text-gray-800">{value}</div>
           </div>
         ))}
       </div>
@@ -585,53 +589,46 @@ function MyTokenDetailCard({ myToken, queue }) {
   );
 }
 
-// ─── Department / Queue Info Side Panel ───────────────────────
-// dept comes from populated departmentId on queue
-function QueueSidePanel({ queue, dept, hospital }) {
+// ─── Side Panel — dept from getDepartmentByQueue ──────────────
+function QueueSidePanel({ queue, dept }) {
+  const hospital = dept?.hospitalId; // populated if your dept route populates it
+  const rows = [
+    { icon: Stethoscope, label: "Department", value: dept?.name || "—" },
+    { icon: MapPin, label: "Hospital", value: hospital?.name || "—" },
+    { icon: MapPin, label: "City", value: hospital?.city || "—" },
+    {
+      icon: User,
+      label: "Doctor(s)",
+      value: dept?.doctorNames?.join(", ") || "—",
+    },
+    {
+      icon: Clock,
+      label: "Avg Consult",
+      value: dept?.averageConsultationTime
+        ? `${dept.averageConsultationTime} min`
+        : "—",
+    },
+    { icon: Calendar, label: "Date", value: fmtDate(queue.startTime) },
+    { icon: Play, label: "Start", value: fmtTime(queue.startTime) },
+    { icon: XCircle, label: "End", value: fmtTime(queue.endTime) },
+  ];
+
   return (
     <div className="space-y-4">
-      {/* Dept info */}
       <div
         className="bg-white rounded-2xl border border-gray-100 p-5"
         style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}
       >
         <h3 className="font-semibold text-gray-900 text-sm mb-4">Queue Info</h3>
         <div className="space-y-3">
-          {[
-            {
-              icon: Stethoscope,
-              label: "Department",
-              value: dept?.name || "—",
-            },
-            { icon: MapPin, label: "Hospital", value: hospital?.name || "—" },
-            { icon: MapPin, label: "City", value: hospital?.city || "—" },
-            {
-              icon: User,
-              label: "Doctor(s)",
-              value: dept?.doctorNames?.join(", ") || "—",
-            },
-            {
-              icon: Clock,
-              label: "Avg Consult",
-              value: dept?.averageConsultationTime
-                ? `${dept.averageConsultationTime} min`
-                : "—",
-            },
-            { icon: Calendar, label: "Date", value: fmtDate(queue.startTime) },
-            {
-              icon: Play,
-              label: "Start Time",
-              value: fmtTime(queue.startTime),
-            },
-            { icon: XCircle, label: "End Time", value: fmtTime(queue.endTime) },
-          ].map(({ icon: Icon, label, value }) => (
+          {rows.map(({ icon: Icon, label, value }) => (
             <div key={label} className="flex items-start gap-3">
               <div className="w-7 h-7 rounded-lg bg-gray-50 flex items-center justify-center border border-gray-100 shrink-0">
                 <Icon size={13} className="text-gray-400" />
               </div>
               <div className="min-w-0">
                 <div className="text-xs text-gray-400">{label}</div>
-                <div className="text-sm font-medium text-gray-800 truncate">
+                <div className="text-sm font-medium text-gray-800 break-words">
                   {value}
                 </div>
               </div>
@@ -640,8 +637,7 @@ function QueueSidePanel({ queue, dept, hospital }) {
         </div>
       </div>
 
-      {/* Tips */}
-      <div className="bg-gradient-to-br from-blue-50 to-teal-50 rounded-2xl border border-blue-100 p-5">
+      <div className="bg-linear-to-br from-blue-50 to-teal-50 rounded-2xl border border-blue-100 p-5">
         <div className="flex items-center gap-2 mb-3">
           <Info size={14} className="text-blue-600" />
           <h3 className="font-semibold text-blue-900 text-sm">Tips</h3>
@@ -651,7 +647,7 @@ function QueueSidePanel({ queue, dept, hospital }) {
             "Arrive 5 min before your token is called.",
             "Keep your token number handy.",
             "Page auto-refreshes every 30 s.",
-            "Don't close this tab to track live.",
+            "Don't close this tab to stay updated.",
           ].map((tip) => (
             <li
               key={tip}
@@ -667,45 +663,7 @@ function QueueSidePanel({ queue, dept, hospital }) {
   );
 }
 
-// ─── Activity Timeline (placeholder, ready for Socket.IO) ─────
-const TIMELINE_CONFIG = {
-  completed: {
-    Icon: CheckCircle2,
-    color: "text-emerald-500",
-    bg: "bg-emerald-50",
-    border: "border-emerald-100",
-    label: "Completed",
-  },
-  called: {
-    Icon: Zap,
-    color: "text-blue-500",
-    bg: "bg-blue-50",
-    border: "border-blue-100",
-    label: "Called",
-  },
-  resumed: {
-    Icon: Play,
-    color: "text-teal-500",
-    bg: "bg-teal-50",
-    border: "border-teal-100",
-    label: "Resumed",
-  },
-  joined: {
-    Icon: LogIn,
-    color: "text-purple-500",
-    bg: "bg-purple-50",
-    border: "border-purple-100",
-    label: "Joined",
-  },
-  paused: {
-    Icon: Pause,
-    color: "text-amber-500",
-    bg: "bg-amber-50",
-    border: "border-amber-100",
-    label: "Paused",
-  },
-};
-
+// ─── Activity Timeline ────────────────────────────────────────
 function ActivityTimeline({ events }) {
   return (
     <div
@@ -722,7 +680,7 @@ function ActivityTimeline({ events }) {
           </p>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-full">
-          <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+          <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />{" "}
           Live
         </div>
       </div>
@@ -740,7 +698,7 @@ function ActivityTimeline({ events }) {
           </div>
         ) : (
           events.map((ev, idx) => {
-            const cfg = TIMELINE_CONFIG[ev.type] || TIMELINE_CONFIG.joined;
+            const cfg = TIMELINE_CFG[ev.type] || TIMELINE_CFG.joined;
             const Icon = cfg.Icon;
             return (
               <div
@@ -785,18 +743,18 @@ function ActivityTimeline({ events }) {
 // MAIN PAGE
 // ═══════════════════════════════════════════════════════════════
 export default function QueueDetails() {
-  const { id } = useParams(); // queue _id from URL
+  const { id } = useParams(); // queue _id from /queue/:id
   const navigate = useNavigate();
 
-  // ── State ──
-  // queue  → your Queue model document
-  // dept   → populated departmentId (name, averageConsultationTime, doctorNames, hospitalId)
-  // hospital → populated hospitalId on dept (name, city)
-  // myToken → your Token model document (null if not joined)
-  // timeline → array of activity events (will come from Socket.IO later)
+  // ── State ──────────────────────────────────────────────────
+  // queue   → Queue document: { _id, departmentId, currentToken, totalTokens, queueStatus, startTime, endTime }
+  // dept    → Department document: { _id, name, averageConsultationTime, doctorNames, hospitalId }
+  // myToken → null | { tokenNumber, estimatedWaitTime, status }
+  //           built from joinQueue response: { tokenNumber, estimatedWaitTime }
+  //           + enriched by getMyTokens for status field
+  // timeline → local event log (will be replaced by Socket.IO events)
   const [queue, setQueue] = useState(null);
   const [dept, setDept] = useState(null);
-  const [hospital, setHospital] = useState(null);
   const [myToken, setMyToken] = useState(null);
   const [timeline, setTimeline] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -806,31 +764,55 @@ export default function QueueDetails() {
   const [refreshing, setRefreshing] = useState(false);
   const intervalRef = useRef(null);
 
-  // ── Load queue data ──
+  // ── Helpers ────────────────────────────────────────────────
+  const pushEvent = (type, message) => {
+    setTimeline((prev) => [
+      {
+        id: Date.now(),
+        type,
+        message,
+        ago: "just now",
+      },
+      ...prev,
+    ]);
+  };
+
+  // ── Load ───────────────────────────────────────────────────
   const load = async () => {
     setLoading(true);
     setError(false);
     try {
-      // Expected API shape from your backend:
-      // GET /api/queues/:id
-      // {
-      //   success: true,
-      //   queue: {
-      //     _id, currentToken, totalTokens, queueStatus, startTime, endTime,
-      //     departmentId: {
-      //       _id, name, averageConsultationTime, doctorNames, isActive,
-      //       hospitalId: { _id, name, city, state, phone, email }
-      //     }
-      //   },
-      //   myToken: null | { _id, tokenNumber, status, estimatedWaitTime, createdAt, completedAt, queueId, patientId }
-      // }
-      const res = await queueService.getQueue(id);
-      const q = res.queue;
-
+      // 1️⃣  GET /api/queues/:queueId
+      //     Controller: getQueue
+      //     Returns: { success, message, queue: { _id, departmentId (ObjectId), currentToken, totalTokens, queueStatus, startTime, endTime } }
+      const qRes = await queueService.getQueue(id);
+      const q = qRes.queue;
       setQueue(q);
-      setDept(q.departmentId); // populated
-      setHospital(q.departmentId?.hospitalId); // populated
-      setMyToken(res.myToken || null); // null if patient hasn't joined
+
+      // 2️⃣  GET /api/departments/:departmentId
+      //     Wire your getDepartmentByQueue(q.departmentId) once the route exists.
+      //     Expected shape: { success, department: { _id, name, averageConsultationTime, doctorNames, hospitalId: { name, city } } }
+      const dRes = await queueService.getDepartmentByQueue(q.departmentId);
+      setDept(dRes.department);
+
+      // 3️⃣  GET /api/tokens/my
+      //     Controller: getMyToken
+      //     Returns: { success, message, token: [ ...Token docs ] }  ← token is an ARRAY
+      //     Find the one that belongs to this queue
+      const tRes = await queueService.getMyTokens();
+      const existing = tRes.token?.find(
+        (t) =>
+          String(t.queueId) === String(q._id) &&
+          ["waiting", "active", "missed"].includes(t.status),
+      );
+      if (existing) {
+        // Map Token model fields → myToken state shape
+        setMyToken({
+          tokenNumber: existing.tokenNumber,
+          estimatedWaitTime: existing.estimatedWaitTime,
+          status: existing.status,
+        });
+      }
 
       setLastRefresh(new Date());
     } catch (err) {
@@ -841,13 +823,32 @@ export default function QueueDetails() {
     }
   };
 
+  // ── Silent refresh (poll) ──────────────────────────────────
   const silentRefresh = async () => {
     setRefreshing(true);
     try {
-      // Re-fetch queue only (lightweight poll until Socket.IO is wired)
-      const res = await queueService.getQueue(id);
-      setQueue(res.queue);
-      setMyToken(res.myToken || null);
+      // Re-fetch queue status + currentToken
+      const qRes = await queueService.getQueue(id);
+      setQueue(qRes.queue);
+
+      // Re-fetch my token status in case it changed (e.g. staff called it)
+      const tRes = await queueService.getMyTokens();
+      const existing = tRes.token?.find(
+        (t) =>
+          String(t.queueId) === String(qRes.queue._id) &&
+          ["waiting", "active", "missed"].includes(t.status),
+      );
+      if (existing) {
+        setMyToken({
+          tokenNumber: existing.tokenNumber,
+          estimatedWaitTime: existing.estimatedWaitTime,
+          status: existing.status,
+        });
+      } else if (myToken) {
+        // token no longer active — update status locally
+        // (Socket.IO will handle this properly later)
+      }
+
       setLastRefresh(new Date());
     } catch {
       /* silent */
@@ -858,68 +859,76 @@ export default function QueueDetails() {
 
   useEffect(() => {
     load();
-    // Auto-refresh every 30s — replace body with socket.on("queue:update", ...) later
     intervalRef.current = setInterval(silentRefresh, 30000);
     return () => clearInterval(intervalRef.current);
   }, [id]);
 
-  // ── Join queue ──
-  // POST /api/queues/:id/join → returns { success, token: { Token document } }
+  // ── Join ───────────────────────────────────────────────────
   const handleJoin = async () => {
     setJoining(true);
     try {
+      // POST /api/queues/:queueId/join
+      // Controller: joinQueue
+      // Returns: { success, message, tokenNumber, estimatedWaitTime }
+      // Note: controller does NOT return a full Token document — just these two fields
       const res = await queueService.joinQueue(id);
-      const newToken = res.token; // your Token model document
 
-      setMyToken(newToken);
+      if (!res.success) {
+        // Handle "Patient already exists in the queue" (409) gracefully
+        alert(res.message || "Could not join queue.");
+        return;
+      }
+
+      // Build myToken state from the response fields
+      setMyToken({
+        tokenNumber: res.tokenNumber,
+        estimatedWaitTime: res.estimatedWaitTime,
+        status: "waiting", // newly created token is always "waiting"
+      });
+
+      // Optimistically bump totalTokens on queue
       setQueue((prev) =>
-        prev ? { ...prev, totalTokens: prev.totalTokens } : prev,
+        prev ? { ...prev, totalTokens: prev.totalTokens + 1 } : prev,
       );
 
-      // Optimistically add to timeline
-      setTimeline((prev) => [
-        {
-          id: Date.now(),
-          type: "joined",
-          message: `You joined the queue (Token #${newToken.tokenNumber})`,
-          ago: "just now",
-        },
-        ...prev,
-      ]);
+      pushEvent("joined", `You joined the queue (Token #${res.tokenNumber})`);
     } catch (err) {
       console.error(err);
+      const msg = err?.response?.data?.message || "Failed to join queue.";
+      alert(msg);
     } finally {
       setJoining(false);
     }
   };
 
-  // ── Leave / cancel token ──
-  // PATCH /api/tokens/:tokenId/cancel → returns { success }
   const handleLeave = async () => {
     if (!myToken) return;
+
     try {
-      await queueService.cancelToken(myToken._id);
+      const response = await queueService.leaveQueue(queue._id);
+
       setMyToken(null);
-      setTimeline((prev) => [
-        {
-          id: Date.now(),
-          type: "completed",
-          message: `Token #${myToken.tokenNumber} cancelled`,
-          ago: "just now",
-        },
-        ...prev,
-      ]);
-    } catch (err) {
-      console.error(err);
+
+      setQueue((prev) =>
+        prev
+          ? {
+              ...prev,
+              totalTokens: Math.max(0, prev.totalTokens - 1),
+            }
+          : prev,
+      );
+
+      pushEvent(
+        "completed",
+        `Token #${myToken.tokenNumber} — you left the queue`,
+      );
+
+      console.log(response.message);
+    } catch (error) {
+      console.error(error);
+      alert(error.message);
     }
   };
-
-  const fmtClock = (d) =>
-    d.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
 
   return (
     <div
@@ -933,7 +942,7 @@ export default function QueueDetails() {
 
       <Navbar />
 
-      {/* ── Live Banner ── */}
+      {/* Live banner */}
       <div className="bg-gradient-to-r from-blue-600 to-teal-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-white text-xs font-medium">
@@ -950,7 +959,7 @@ export default function QueueDetails() {
         </div>
       </div>
 
-      {/* ── Breadcrumb ── */}
+      {/* Breadcrumb */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div className="flex items-center gap-2 text-xs text-gray-400">
           <a href="/" className="hover:text-blue-600 transition-colors">
@@ -970,7 +979,7 @@ export default function QueueDetails() {
         </div>
       </div>
 
-      {/* ── Page header ── */}
+      {/* Page header */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -992,10 +1001,10 @@ export default function QueueDetails() {
                   <QueueStatusBadge status={queue.queueStatus} />
                 )}
               </div>
-              {!loading && (hospital || dept) && (
+              {!loading && dept && (
                 <p className="text-sm text-gray-500 mt-0.5">
-                  {hospital?.name}
-                  {hospital?.city ? ` · ${hospital.city}` : ""}
+                  {dept.hospitalId?.name}
+                  {dept.hospitalId?.city ? ` · ${dept.hospitalId.city}` : ""}
                 </p>
               )}
             </div>
@@ -1015,15 +1024,14 @@ export default function QueueDetails() {
             </button>
             {myToken && (
               <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-sm font-semibold text-emerald-700">
-                <Ticket size={14} />
-                Token #{myToken.tokenNumber}
+                <Ticket size={14} /> Token #{myToken.tokenNumber}
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* ── Main content ── */}
+      {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16 space-y-6">
         {loading ? (
           <LoadingSkeleton />
@@ -1031,30 +1039,28 @@ export default function QueueDetails() {
           <ErrorState onRetry={load} />
         ) : (
           <>
-            {/* Big queue card */}
             <QueueSummaryCard
               queue={queue}
               dept={dept}
-              hospital={hospital}
               myToken={myToken}
               onJoin={handleJoin}
               onLeave={handleLeave}
               joining={joining}
             />
 
-            {/* Stat cards — all from Queue model */}
+            {/* Stat cards — Queue model fields */}
             <QueueStatCards queue={queue} />
 
-            {/* My token detail row — all from Token model */}
-            {myToken && <MyTokenDetailCard myToken={myToken} queue={queue} />}
+            {/* My token detail row — joinQueue response fields */}
+            {myToken && <MyTokenCard myToken={myToken} queue={queue} />}
 
-            {/* Timeline + Side panel */}
+            {/* Timeline + side panel */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2">
                 <ActivityTimeline events={timeline} />
               </div>
               <div>
-                <QueueSidePanel queue={queue} dept={dept} hospital={hospital} />
+                <QueueSidePanel queue={queue} dept={dept} />
               </div>
             </div>
           </>
