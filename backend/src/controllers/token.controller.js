@@ -86,16 +86,16 @@ const joinQueue = async (req, res) => {
   }
 };
 
-const getMyToken = async (req,res) => {
-  try{
-    const {_id: userId} = req.user;  
+const getMyToken = async (req, res) => {
+  try {
+    const { _id: userId } = req.user;
 
-    const token = await Token.find({patientId: userId});
+    const token = await Token.find({ patientId: userId });
 
-    if(!token){
+    if (!token) {
       return res.status(400).json({
         success: false,
-        message: "Token does not exists"
+        message: "Token does not exists",
       });
     }
 
@@ -103,14 +103,50 @@ const getMyToken = async (req,res) => {
     return res.status(200).json({
       success: true,
       message: "Token returned successfully",
-      token
+      token,
     });
-  }catch(error){
+  } catch (error) {
     return res.status(500).json({
       success: false,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
-}
+};
 
-export { joinQueue , getMyToken};
+const leaveQueue = async (req, res) => {
+  try {
+    const { queueId } = req.params;
+    const patientId = req.user._id;
+
+    const token = await Token.findOne({
+      patientId,
+      queueId,
+      status: {
+        $in: ["waiting", "active"],
+      },
+    });
+
+    if (!token) {
+      return res.status(404).json({
+        success: false,
+        message: "No active token found in this queue",
+      });
+    }
+
+    token.status = "cancelled";
+    await token.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Left queue successfully",
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+export { joinQueue, getMyToken, leaveQueue };
