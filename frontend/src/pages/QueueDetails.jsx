@@ -628,7 +628,7 @@ function QueueSidePanel({ queue, dept }) {
               </div>
               <div className="min-w-0">
                 <div className="text-xs text-gray-400">{label}</div>
-                <div className="text-sm font-medium text-gray-800 break-words">
+                <div className="text-sm font-medium text-gray-800 wrap-break-word">
                   {value}
                 </div>
               </div>
@@ -943,7 +943,7 @@ export default function QueueDetails() {
       <Navbar />
 
       {/* Live banner */}
-      <div className="bg-gradient-to-r from-blue-600 to-teal-500">
+      <div className="bg-linear-to-r from-blue-600 to-teal-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-white text-xs font-medium">
             <Wifi size={13} className="shrink-0 animate-pulse" />
