@@ -743,7 +743,7 @@ function ActivityTimeline({ events }) {
 // MAIN PAGE
 // ═══════════════════════════════════════════════════════════════
 export default function QueueDetails() {
-  const { id } = useParams(); // queue _id from /queue/:id
+  const { id } = useParams(); // queue_id from /queue/:id
   const navigate = useNavigate();
 
   // ── State ──────────────────────────────────────────────────

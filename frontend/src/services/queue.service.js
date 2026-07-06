@@ -36,7 +36,7 @@ const getMyTokens = async () => {
     const { data } = await axiosInstance.get(`/token/my`);
     return data; // { success, message, token: [...] }
   } catch (error) {
-    throw new Error(error.message?.data?.message || "Failed to get token");
+    throw new Error(error.response?.data?.message || "Failed to get token");
   }
 };
 
@@ -46,9 +46,9 @@ const updateQueueStatus = async (queueId, queueStatus) => {
       queueStatus,
     });
     return data;
-  } catch (errro) {
+  } catch (error) {
     throw new Error(
-      error.message?.data?.message || "Failed to update queue status",
+      error.response?.data?.message || "Failed to update queue status",
     );
   }
 };
@@ -57,31 +57,42 @@ const callNextToken = async (queueId) => {
   try {
     const { data } = await axiosInstance.post(`/queue/${queueId}/next`);
     return data;
-  } catch {
+  } catch (error) {
     throw new Error(
-      error.message?.data?.message || "Failed to call next token",
+      error.response?.data?.message || "Failed to call next token",
+    );
+  }
+};
+
+const getCurrentActiveToken = async (queueId) => {
+  try {
+    const { data } = await axiosInstance.get(`/token/${queueId}/current-token`);
+    return data; // { success, message, token }
+  } catch (error) {
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch active token",
     );
   }
 };
 
 const completeCurrentToken = async (queueId) => {
   try {
-    const { data } = await axiosInstance.post(`/queue/${queueId}/complete`);
+    const { data } = await axiosInstance.post(`/queue/${queueId}/complete-current`);
     return data;
   } catch (error) {
     throw new Error(
-      error.message?.data?.message || "Failed to complete current token",
+      error.response?.data?.message || "Failed to complete current token",
     );
   }
 };
 
 const missCurrentToken = async (queueId) => {
   try {
-    const { data } = await axiosInstance.post(`/queue/${queueId}/miss`);
+    const { data } = await axiosInstance.post(`/queue/${queueId}/miss-current`);
     return data;
   } catch (error) {
     throw new Error(
-      error.message?.data?.message || "Failed to mark token missed",
+      error.response?.data?.message || "Failed to mark token missed",
     );
   }
 };
@@ -91,18 +102,18 @@ const leaveQueue = async (queueId) => {
     const response = await axiosInstance.patch(`/token/${queueId}/leave`);
     return response;
   } catch (error) {
-    throw new Error(error.message?.data?.message || "Failed to leave queue");
+    throw new Error(error.response?.data?.message || "Failed to leave queue");
   }
 };
 
 const getStaffqueues = async () => {
-  try{
+  try {
     const response = await axiosInstance.get(`/queue/getstaffqueues`);
     return response;
-  }catch(error){
-    throw new Error(error.message?.data?.message || "Failed to fetch queues");
+  } catch (error) {
+    throw new Error(error.response?.data?.message || "Failed to fetch queues");
   }
-}
+};
 
 const queueService = {
   getQueue,
@@ -111,10 +122,11 @@ const queueService = {
   getMyTokens,
   updateQueueStatus,
   callNextToken,
+  getCurrentActiveToken,
   completeCurrentToken,
   missCurrentToken,
   leaveQueue,
-  getStaffqueues
+  getStaffqueues,
 };
 
 export default queueService;

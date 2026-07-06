@@ -484,7 +484,7 @@ export default function HospitalDetails() {
   // ── helper to navigate to queue page ──
   const handleViewQueue = (deptId) => {
     // Replace with: navigate(`/queues/${deptId}`)
-    window.location.href = `/queues/${deptId}`;
+    window.location.href = `/queue/${deptId}`;
   };
 
   const TABS = ["departments", "about"];
