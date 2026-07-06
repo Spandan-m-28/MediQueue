@@ -33,13 +33,13 @@ function Hero() {
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
             <a
-              href="#register"
+              href="/login"
               className="px-7 py-3.5 text-base font-semibold text-white bg-linear-to-r from-blue-600 to-blue-700 rounded-xl hover:from-blue-700 hover:to-blue-800 shadow-lg shadow-blue-200 hover:shadow-xl hover:shadow-blue-300 transition-all duration-300 hover:-translate-y-0.5 text-center"
             >
               Get Started
             </a>
             <a
-              href="#features"
+              href="/login"
               className="px-7 py-3.5 text-base font-semibold text-blue-700 bg-white border-2 border-blue-200 rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-all duration-200 text-center"
             >
               Explore Hospitals
@@ -945,13 +945,13 @@ function CTA() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <a
-                href="#register"
+                href="/register"
                 className="px-8 py-4 text-base font-semibold text-blue-950 bg-white rounded-xl hover:bg-blue-50 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5"
               >
                 Register Now
               </a>
               <a
-                href="#features"
+                href="/register"
                 className="px-8 py-4 text-base font-semibold text-white border-2 border-white/20 rounded-xl hover:border-white/50 hover:bg-white/10 transition-all duration-200"
               >
                 Explore Hospitals
