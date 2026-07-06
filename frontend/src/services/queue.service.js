@@ -95,6 +95,15 @@ const leaveQueue = async (queueId) => {
   }
 };
 
+const getStaffqueues = async () => {
+  try{
+    const response = await axiosInstance.get(`/queue/getstaffqueues`);
+    return response;
+  }catch(error){
+    throw new Error(error.message?.data?.message || "Failed to fetch queues");
+  }
+}
+
 const queueService = {
   getQueue,
   getDepartmentByQueue,
@@ -105,6 +114,7 @@ const queueService = {
   completeCurrentToken,
   missCurrentToken,
   leaveQueue,
+  getStaffqueues
 };
 
 export default queueService;

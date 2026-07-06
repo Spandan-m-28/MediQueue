@@ -26,6 +26,8 @@ import {
   AlertCircle,
   Calendar,
 } from "lucide-react";
+import queueService from "../services/queue.service.js";
+import { useNavigate } from "react-router-dom";
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────
 const STAFF = {
@@ -306,16 +308,17 @@ function QueueCardSkeleton() {
 }
 
 // ─── Queue Card ───────────────────────────────────────────────
-function QueueCard({ queue, onManage }) {
+function QueueCard({ queue }) {
+  const navigate = useNavigate();
   const [hovered, setHovered] = useState(false);
-  const cfg = STATUS_CONFIG[queue.status];
+  const cfg = STATUS_CONFIG[queue.queueStatus];
   const Icon = ICON_MAP[queue.icon] || Activity;
   const isActionable =
-    queue.status !== "closed" && queue.status !== "not_started";
+    queue.queueStatus !== "closed" && queue.queueStatus !== "not_started";
 
   return (
     <div
-      className="bg-white rounded-2xl border border-gray-100 p-5 flex flex-col transition-all duration-300"
+      className="bg-white rounded-2xl border border-gray-100 p-5 flex flex-col transition-all duration-300 cursor-pointer"
       style={{
         boxShadow: hovered
           ? "0 16px 36px -8px rgba(37,99,235,0.14), 0 4px 12px -4px rgba(0,0,0,0.08)"
@@ -326,6 +329,7 @@ function QueueCard({ queue, onManage }) {
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onClick={() => navigate(`/staff/queue/${queue._id}`)}
     >
       {/* top */}
       <div className="flex items-start justify-between mb-4">
@@ -337,7 +341,7 @@ function QueueCard({ queue, onManage }) {
         >
           <Icon size={22} className={cfg.text} />
         </div>
-        <StatusBadge status={queue.status} />
+        <StatusBadge status={queue.queueStatus} />
       </div>
 
       {/* name */}
@@ -356,7 +360,7 @@ function QueueCard({ queue, onManage }) {
             <Clock size={10} /> Token
           </div>
           <div className="text-base font-bold text-gray-800">
-            {queue.status === "not_started" ? "—" : `#${queue.currentToken}`}
+            {queue.queueStatus === "not_started" ? "—" : `#${queue.currentToken}`}
           </div>
         </div>
         <div className="bg-gray-50 rounded-xl p-2.5">
@@ -379,9 +383,8 @@ function QueueCard({ queue, onManage }) {
 
       {/* CTA */}
       <button
-        onClick={() => onManage(queue.id)}
         disabled={!isActionable}
-        className="mt-auto w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="mt-auto w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
         style={{
           background: !isActionable
             ? "#F3F4F6"
@@ -447,9 +450,6 @@ function EmptyState() {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════
-// MAIN PAGE
-// ═══════════════════════════════════════════════════════════════
 export default function StaffHomePage() {
   const [queues, setQueues] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -459,9 +459,14 @@ export default function StaffHomePage() {
   const load = () => {
     setLoading(true);
     setError(false);
-    const t = setTimeout(() => {
-      // Replace with: axios.get("/api/staff/queues").then(r => setQueues(r.data))
-      setQueues(MOCK_QUEUES);
+    const t = setTimeout(async () => {
+      try{
+      const response = await queueService.getStaffqueues();
+      console.log(response.data);
+      setQueues(response.data.queues);
+      }catch(error){
+        console.log(error);
+      }
       setLoading(false);
     }, 1300);
     return () => clearTimeout(t);
@@ -471,11 +476,6 @@ export default function StaffHomePage() {
     const cleanup = load();
     return cleanup;
   }, []);
-
-  const handleManage = (id) => {
-    // Replace with: navigate(`/staff/queues/${id}`)
-    window.location.hash = `/staff/queues/${id}`;
-  };
 
   const FILTERS = [
     { id: "all", label: "All" },
@@ -488,9 +488,9 @@ export default function StaffHomePage() {
   const filtered =
     filter === "all" ? queues : queues.filter((q) => q.status === filter);
   const counts = {
-    active: queues.filter((q) => q.status === "active").length,
-    paused: queues.filter((q) => q.status === "paused").length,
-    closed: queues.filter((q) => q.status === "closed").length,
+    active: queues.filter((q) => q.queueStatus === "active").length,
+    paused: queues.filter((q) => q.queueStatus === "paused").length,
+    closed: queues.filter((q) => q.queueStatus === "closed").length,
   };
 
   return (
@@ -587,7 +587,7 @@ export default function StaffHomePage() {
             <EmptyState />
           ) : (
             filtered.map((q) => (
-              <QueueCard key={q.id} queue={q} onManage={handleManage} />
+              <QueueCard key={q._id} queue={q} />
             ))
           )}
         </div>
