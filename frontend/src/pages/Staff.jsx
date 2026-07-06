@@ -462,7 +462,6 @@ export default function StaffHomePage() {
     const t = setTimeout(async () => {
       try{
       const response = await queueService.getStaffqueues();
-      console.log(response.data);
       setQueues(response.data.queues);
       }catch(error){
         console.log(error);
