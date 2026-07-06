@@ -373,11 +373,11 @@ export default function Login() {
       localStorage.setItem("token", response.token);
       localStorage.setItem("user", JSON.stringify(response.user));
 
-      if(response.user.role === "patient"){
+      if (response.user.role === "patient") {
         navigate("/hospitals");
-      }else if(response.user.role === "staff"){
+      } else if (response.user.role === "staff") {
         navigate("/staff");
-      }else{
+      } else {
         navigate("/hospitals");
       }
     } catch (err) {
@@ -533,36 +533,43 @@ export default function Login() {
 
               {/* Remember me + Forgot password */}
               <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2.5 cursor-pointer group">
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      className="sr-only"
-                    />
-                    <div
-                      onClick={() => setRememberMe((v) => !v)}
-                      className={`w-4.5 h-4.5 rounded-[5px] border-2 flex items-center justify-center transition-all duration-200 cursor-pointer
-                        ${rememberMe ? "bg-blue-600 border-blue-600" : "bg-white border-gray-300 group-hover:border-blue-400"}`}
-                    >
-                      {rememberMe && (
-                        <svg
-                          className="w-2.5 h-2.5 text-white"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          strokeWidth={3.5}
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                      )}
-                    </div>
+                <label
+                  htmlFor="rememberMe"
+                  className="flex items-center gap-2.5 cursor-pointer group"
+                >
+                  <input
+                    id="rememberMe"
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="sr-only"
+                  />
+
+                  <div
+                    className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all duration-200
+                    ${
+                      rememberMe
+                        ? "bg-blue-600 border-blue-600"
+                        : "bg-white border-gray-300 group-hover:border-blue-400"
+                    }`}
+                  >
+                    {rememberMe && (
+                      <svg
+                        className="w-3 h-3 text-white"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={3}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                    )}
                   </div>
+
                   <span className="text-sm text-gray-600 select-none">
                     Remember me
                   </span>
@@ -697,7 +704,7 @@ export default function Login() {
               <p className="text-center text-sm text-gray-500 pt-1">
                 Don't have an account?{" "}
                 <a
-                  href="#register"
+                  href="/register"
                   className="font-semibold text-blue-600 hover:text-blue-700 hover:underline underline-offset-2 transition-colors"
                 >
                   Create one free
