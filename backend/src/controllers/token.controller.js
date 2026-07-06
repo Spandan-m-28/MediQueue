@@ -7,8 +7,6 @@ const joinQueue = async (req, res) => {
     const { queueId } = req.params;
     const patientId = req.user._id;
 
-    console.log(queueId);
-    console.log(patientId);
     const queue = await Queue.findById(queueId);
     if (!queue) {
       return res.status(404).json({
@@ -78,7 +76,6 @@ const joinQueue = async (req, res) => {
       estimatedWaitTime,
     });
   } catch (error) {
-    console.log(error);
     return res.status(500).json({
       success: false,
       message: "Internal Server Error",
@@ -99,7 +96,6 @@ const getMyToken = async (req, res) => {
       });
     }
 
-    console.log(token);
     return res.status(200).json({
       success: true,
       message: "Token returned successfully",
@@ -141,7 +137,6 @@ const leaveQueue = async (req, res) => {
       message: "Left queue successfully",
     });
   } catch (error) {
-    console.log(error);
     return res.status(500).json({
       success: false,
       message: "Internal Server Error",
@@ -149,4 +144,43 @@ const leaveQueue = async (req, res) => {
   }
 };
 
-export { joinQueue, getMyToken, leaveQueue };
+const getCurrentActiveToken = async (req, res) => {
+  try {
+    const { queueId } = req.params;
+ 
+    const queue = await Queue.findById(queueId);
+ 
+    if (!queue) {
+      return res.status(404).json({
+        success: false,
+        message: "Queue not found",
+      });
+    }
+ 
+    const activeToken = await Token.findOne({
+      queueId,
+      status: "active",
+    }).populate("patientId", "name phone"); // adjust fields to whatever your Patient/User model actually has
+ 
+    if (!activeToken) {
+      return res.status(200).json({
+        success: true,
+        message: "No token currently active",
+        token: null,
+      });
+    }
+ 
+    return res.status(200).json({
+      success: true,
+      message: "Active token fetched successfully",
+      token: activeToken,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+export { joinQueue, getMyToken, leaveQueue ,getCurrentActiveToken};
