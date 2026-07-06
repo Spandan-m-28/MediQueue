@@ -260,6 +260,56 @@ const missCurrentToken = async (req, res) => {
   }
 };
 
+const getHospitalQueues = async (req, res) => {
+  try {
+    const hospitalId = req.user.hospitalId;
+
+    if (!hospitalId) {
+      return res.status(400).json({
+        success: false,
+        message: "Staff is not assigned to any hospital.",
+      });
+    }
+
+    const departments = await Department.find({ hospitalId });
+
+    if (!departments.length) {
+      return res.status(200).json({
+        success: true,
+        message: "No departments found for this hospital",
+        queues: [],
+      });
+    }
+
+    const departmentIds = departments.map((dept) => dept._id);
+
+    const { queueStatus } = req.query;
+
+    const filter = { departmentId: { $in: departmentIds } };
+    if (queueStatus) {
+      filter.queueStatus = queueStatus;
+    }
+
+    const queues = await Queue.find(filter).populate(
+      "departmentId",
+      "name averageConsultationTime doctorNames"
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Hospital queues fetched successfully",
+      queues,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
 export {
   createQueue,
   getQueue,
@@ -267,4 +317,5 @@ export {
   callNextToken,
   completeCurrentToken,
   missCurrentToken,
+  getHospitalQueues
 };

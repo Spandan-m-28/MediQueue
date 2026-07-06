@@ -4,6 +4,7 @@ import {
   completeCurrentToken,
   createQueue,
   getQueue,
+  getHospitalQueues,
   missCurrentToken,
   updateQueueStatus,
 } from "../controllers/queue.controller.js";
@@ -19,6 +20,8 @@ router.post(
   createQueue,
 );
 
+router.get("/getstaffqueues", verifyJWT, allowRoles("staff"), getHospitalQueues);
+
 router.get("/:queueId", verifyJWT, getQueue);
 
 router.patch(
@@ -27,6 +30,7 @@ router.patch(
   allowRoles("admin", "staff"),
   updateQueueStatus,
 );
+
 router.post(
   "/:queueId/next",
   verifyJWT,
@@ -47,5 +51,6 @@ router.post(
   allowRoles("staff", "admin"),
   missCurrentToken,
 );
+
 
 export default router;
