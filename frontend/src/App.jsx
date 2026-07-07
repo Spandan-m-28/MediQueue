@@ -1,6 +1,7 @@
 import { Routes, Route } from "react-router-dom";
-import { useState } from "react";
+import { useState , useEffect} from "react";
 import "./App.css";
+import socket from "./sockets/socket.js";
 
 import Landing from "./pages/Landing.jsx";
 import Login from "./pages/Login.jsx";
@@ -13,6 +14,15 @@ import StaffQueueDashboard from "./pages/StaffQueueDashboard.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
 function App() {
+  useEffect(() => {
+  const token = localStorage.getItem("token");
+
+  if (token && !socket.connected) {
+    socket.connect();
+    console.log("Socket Connected");
+  }
+}, []);
+
   return (
     <>
       <Routes>

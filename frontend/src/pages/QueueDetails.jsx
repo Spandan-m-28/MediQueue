@@ -30,6 +30,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar.jsx";
 import Footer from "../components/Footer.jsx";
 import queueService from "../services/queue.service.js";
+import socket from "../sockets/socket.js";
 
 // ─── Helpers ──────────────────────────────────────────────────
 function fmtTime(dateStr) {
@@ -115,6 +116,13 @@ const TIMELINE_CFG = {
     bg: "bg-emerald-50",
     border: "border-emerald-100",
     label: "Completed",
+  },
+  missed: {
+    Icon: AlertCircle,
+    color: "text-amber-500",
+    bg: "bg-amber-50",
+    border: "border-amber-100",
+    label: "Missed",
   },
   called: {
     Icon: Zap,
@@ -243,11 +251,6 @@ function ErrorState({ onRetry }) {
 
 // ═══════════════════════════════════════════════════════════════
 // QUEUE SUMMARY CARD
-// queue  → raw Queue document from getQueue controller
-//           { _id, departmentId (ObjectId only), currentToken, totalTokens, queueStatus, startTime, endTime }
-// dept   → Department document from separate getDepartmentByQueue call
-//           { _id, name, averageConsultationTime, doctorNames, hospitalId: { name, city } }
-// myToken → null | { tokenNumber, estimatedWaitTime, status } built locally after joinQueue
 // ═══════════════════════════════════════════════════════════════
 function QueueSummaryCard({ queue, dept, myToken, onJoin, onLeave, joining }) {
   const progress =
@@ -374,7 +377,6 @@ function QueueSummaryCard({ queue, dept, myToken, onJoin, onLeave, joining }) {
                     <div className="text-xs text-emerald-600 font-semibold uppercase tracking-widest mb-1">
                       My Token
                     </div>
-                    {/* tokenNumber comes from joinQueue response */}
                     <div className="text-5xl font-black text-emerald-700 tabular-nums">
                       {myToken.tokenNumber}
                     </div>
@@ -382,13 +384,14 @@ function QueueSummaryCard({ queue, dept, myToken, onJoin, onLeave, joining }) {
                       <TokenStatusBadge status={myToken.status} />
                     </div>
                     <div className="mt-2 text-xs text-emerald-600 font-medium">
-                      {aheadCount > 0
-                        ? `${aheadCount} patients ahead of you`
-                        : "You're next! 🎉"}
+                      {myToken.status === "active"
+                        ? "You're being served now!"
+                        : aheadCount > 0
+                          ? `${aheadCount} patients ahead of you`
+                          : "You're next! 🎉"}
                     </div>
                   </div>
 
-                  {/* estimatedWaitTime comes directly from joinQueue response */}
                   <div className="bg-white rounded-xl p-3 border border-emerald-100 mb-4 text-center">
                     <div className="text-xs text-gray-400 mb-0.5">
                       Estimated wait time
@@ -407,7 +410,7 @@ function QueueSummaryCard({ queue, dept, myToken, onJoin, onLeave, joining }) {
                     Leave Queue
                   </button>
                   <p className="text-xs text-center text-emerald-500 mt-3">
-                    Keep this page open for live updates
+                    Live updates — no need to refresh
                   </p>
                 </>
               ) : (
@@ -475,7 +478,7 @@ function QueueSummaryCard({ queue, dept, myToken, onJoin, onLeave, joining }) {
   );
 }
 
-// ─── Stat cards — fields from Queue model only ────────────────
+// ─── Stat cards ────────────────────────────────────────────────
 function QueueStatCards({ queue }) {
   const remaining = Math.max(0, queue.totalTokens - queue.currentToken);
   const qCfg = {
@@ -546,9 +549,7 @@ function QueueStatCards({ queue }) {
   );
 }
 
-// ─── My Token detail card — fields from joinQueue response ────
-// joinQueue returns: { success, message, tokenNumber, estimatedWaitTime }
-// We store this shape in myToken state
+// ─── My Token detail card ──────────────────────────────────────
 function MyTokenCard({ myToken, queue }) {
   if (!myToken) return null;
   const aheadCount = Math.max(0, myToken.tokenNumber - queue.currentToken - 1);
@@ -589,9 +590,9 @@ function MyTokenCard({ myToken, queue }) {
   );
 }
 
-// ─── Side Panel — dept from getDepartmentByQueue ──────────────
+// ─── Side Panel ─────────────────────────────────────────────────
 function QueueSidePanel({ queue, dept }) {
-  const hospital = dept?.hospitalId; // populated if your dept route populates it
+  const hospital = dept?.hospitalId;
   const rows = [
     { icon: Stethoscope, label: "Department", value: dept?.name || "—" },
     { icon: MapPin, label: "Hospital", value: hospital?.name || "—" },
@@ -646,7 +647,7 @@ function QueueSidePanel({ queue, dept }) {
           {[
             "Arrive 5 min before your token is called.",
             "Keep your token number handy.",
-            "Page auto-refreshes every 30 s.",
+            "This page updates live — no need to refresh.",
             "Don't close this tab to stay updated.",
           ].map((tip) => (
             <li
@@ -676,7 +677,7 @@ function ActivityTimeline({ events }) {
             Recent Activity
           </h3>
           <p className="text-xs text-gray-400 mt-0.5">
-            Live event log — ready for Socket.IO
+            Live event log via Socket.IO
           </p>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-full">
@@ -743,16 +744,9 @@ function ActivityTimeline({ events }) {
 // MAIN PAGE
 // ═══════════════════════════════════════════════════════════════
 export default function QueueDetails() {
-  const { id } = useParams(); // queue_id from /queue/:id
+  const { id } = useParams();
   const navigate = useNavigate();
 
-  // ── State ──────────────────────────────────────────────────
-  // queue   → Queue document: { _id, departmentId, currentToken, totalTokens, queueStatus, startTime, endTime }
-  // dept    → Department document: { _id, name, averageConsultationTime, doctorNames, hospitalId }
-  // myToken → null | { tokenNumber, estimatedWaitTime, status }
-  //           built from joinQueue response: { tokenNumber, estimatedWaitTime }
-  //           + enriched by getMyTokens for status field
-  // timeline → local event log (will be replaced by Socket.IO events)
   const [queue, setQueue] = useState(null);
   const [dept, setDept] = useState(null);
   const [myToken, setMyToken] = useState(null);
@@ -761,44 +755,35 @@ export default function QueueDetails() {
   const [error, setError] = useState(false);
   const [joining, setJoining] = useState(false);
   const [lastRefresh, setLastRefresh] = useState(new Date());
-  const [refreshing, setRefreshing] = useState(false);
-  const intervalRef = useRef(null);
+  const [connected, setConnected] = useState(socket.connected);
 
-  // ── Helpers ────────────────────────────────────────────────
+  // myToken is kept in a ref too, purely so the socket handler (registered
+  // once) can read its *current* value without needing to be re-subscribed
+  // every time myToken changes.
+  const myTokenRef = useRef(null);
+  useEffect(() => {
+    myTokenRef.current = myToken;
+  }, [myToken]);
+
   const pushEvent = (type, message) => {
     setTimeline((prev) => [
-      {
-        id: Date.now(),
-        type,
-        message,
-        ago: "just now",
-      },
+      { id: Date.now(), type, message, ago: "just now" },
       ...prev,
     ]);
   };
 
-  // ── Load ───────────────────────────────────────────────────
+  // ── One-time load (no more polling) ───────────────────────
   const load = async () => {
     setLoading(true);
     setError(false);
     try {
-      // 1️⃣  GET /api/queues/:queueId
-      //     Controller: getQueue
-      //     Returns: { success, message, queue: { _id, departmentId (ObjectId), currentToken, totalTokens, queueStatus, startTime, endTime } }
       const qRes = await queueService.getQueue(id);
       const q = qRes.queue;
       setQueue(q);
 
-      // 2️⃣  GET /api/departments/:departmentId
-      //     Wire your getDepartmentByQueue(q.departmentId) once the route exists.
-      //     Expected shape: { success, department: { _id, name, averageConsultationTime, doctorNames, hospitalId: { name, city } } }
       const dRes = await queueService.getDepartmentByQueue(q.departmentId);
       setDept(dRes.department);
 
-      // 3️⃣  GET /api/tokens/my
-      //     Controller: getMyToken
-      //     Returns: { success, message, token: [ ...Token docs ] }  ← token is an ARRAY
-      //     Find the one that belongs to this queue
       const tRes = await queueService.getMyTokens();
       const existing = tRes.token?.find(
         (t) =>
@@ -806,7 +791,6 @@ export default function QueueDetails() {
           ["waiting", "active", "missed"].includes(t.status),
       );
       if (existing) {
-        // Map Token model fields → myToken state shape
         setMyToken({
           tokenNumber: existing.tokenNumber,
           estimatedWaitTime: existing.estimatedWaitTime,
@@ -823,70 +807,113 @@ export default function QueueDetails() {
     }
   };
 
-  // ── Silent refresh (poll) ──────────────────────────────────
-  const silentRefresh = async () => {
-    setRefreshing(true);
-    try {
-      // Re-fetch queue status + currentToken
-      const qRes = await queueService.getQueue(id);
-      setQueue(qRes.queue);
+  // Initial load only — everything after this comes from the socket.
+  useEffect(() => {
+    load();
+  }, [id]);
 
-      // Re-fetch my token status in case it changed (e.g. staff called it)
-      const tRes = await queueService.getMyTokens();
-      const existing = tRes.token?.find(
-        (t) =>
-          String(t.queueId) === String(qRes.queue._id) &&
-          ["waiting", "active", "missed"].includes(t.status),
-      );
-      if (existing) {
-        setMyToken({
-          tokenNumber: existing.tokenNumber,
-          estimatedWaitTime: existing.estimatedWaitTime,
-          status: existing.status,
-        });
-      } else if (myToken) {
-        // token no longer active — update status locally
-        // (Socket.IO will handle this properly later)
+  // ── Socket room join/leave ─────────────────────────────────
+  useEffect(() => {
+    socket.emit("joinQueue", id);
+    return () => {
+      socket.emit("leaveQueueRoom", id);
+    };
+  }, [id]);
+
+  // ── Connection status (so the "Live" banner reflects reality) ──
+  useEffect(() => {
+    const onConnect = () => {
+      setConnected(true);
+      // Rejoin the room and re-sync in case we reconnected after a drop.
+      socket.emit("joinQueue", id);
+      load();
+    };
+    const onDisconnect = () => setConnected(false);
+
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+    return () => {
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
+    };
+  }, [id]);
+
+  // ── The single live-update event ───────────────────────────
+  // Payload: { currentToken, queueStatus, activeToken: { tokenNumber, status } | null }
+  useEffect(() => {
+    const handleQueueUpdate = (data) => {
+      console.log("queueUpdated:", data);
+
+      setQueue((prev) => {
+        if (!prev) return prev;
+
+        if (prev.queueStatus !== data.queueStatus) {
+          pushEvent(
+            data.queueStatus === "paused" ? "paused" : data.queueStatus === "active" ? "resumed" : "completed",
+            data.queueStatus === "paused"
+              ? "Queue was paused by staff"
+              : data.queueStatus === "closed"
+                ? "Queue was closed by staff"
+                : "Queue resumed by staff",
+          );
+        }
+
+        if (data.currentToken !== prev.currentToken && data.activeToken) {
+          pushEvent("called", `Token #${data.activeToken.tokenNumber} called to the counter`);
+        }
+
+        return {
+          ...prev,
+          currentToken: data.currentToken,
+          queueStatus: data.queueStatus,
+          totalTokens: data.totalTokens ?? prev.totalTokens,
+        };
+      });
+
+      // If the token that just changed is mine, reflect its new status.
+      const mine = myTokenRef.current;
+      if (mine && data.activeToken && data.activeToken.tokenNumber === mine.tokenNumber) {
+        if (data.activeToken.status !== mine.status) {
+          if (data.activeToken.status === "completed") {
+            pushEvent("completed", `Your token #${mine.tokenNumber} was marked completed`);
+          } else if (data.activeToken.status === "missed") {
+            pushEvent("missed", `Your token #${mine.tokenNumber} was marked missed`);
+          }
+          setMyToken((prevToken) =>
+            prevToken ? { ...prevToken, status: data.activeToken.status } : prevToken,
+          );
+        }
       }
 
       setLastRefresh(new Date());
-    } catch {
-      /* silent */
-    } finally {
-      setRefreshing(false);
-    }
-  };
+    };
 
-  useEffect(() => {
-    load();
-    intervalRef.current = setInterval(silentRefresh, 30000);
-    return () => clearInterval(intervalRef.current);
-  }, [id]);
+    socket.on("queueUpdated", handleQueueUpdate);
+    return () => {
+      socket.off("queueUpdated", handleQueueUpdate);
+    };
+  }, []);
 
   // ── Join ───────────────────────────────────────────────────
   const handleJoin = async () => {
     setJoining(true);
     try {
-      // POST /api/queues/:queueId/join
-      // Controller: joinQueue
-      // Returns: { success, message, tokenNumber, estimatedWaitTime }
-      // Note: controller does NOT return a full Token document — just these two fields
       const res = await queueService.joinQueue(id);
 
       if (!res.success) {
-        // Handle "Patient already exists in the queue" (409) gracefully
         alert(res.message || "Could not join queue.");
         return;
       }
 
-      // Build myToken state from the response fields
       setMyToken({
         tokenNumber: res.tokenNumber,
         estimatedWaitTime: res.estimatedWaitTime,
-        status: "waiting", // newly created token is always "waiting"
+        status: "waiting",
       });
 
-      // Optimistically bump totalTokens on queue
+      // Optimistic bump — the authoritative totalTokens count should really
+      // come from a socket event too once joinQueue's controller emits one
+      // (see note at the bottom of this file).
       setQueue((prev) =>
         prev ? { ...prev, totalTokens: prev.totalTokens + 1 } : prev,
       );
@@ -908,15 +935,6 @@ export default function QueueDetails() {
       const response = await queueService.leaveQueue(queue._id);
 
       setMyToken(null);
-
-      setQueue((prev) =>
-        prev
-          ? {
-              ...prev,
-              totalTokens: Math.max(0, prev.totalTokens - 1),
-            }
-          : prev,
-      );
 
       pushEvent(
         "completed",
@@ -946,15 +964,16 @@ export default function QueueDetails() {
       <div className="bg-linear-to-r from-blue-600 to-teal-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-white text-xs font-medium">
-            <Wifi size={13} className="shrink-0 animate-pulse" />
+            <Wifi size={13} className={`shrink-0 ${connected ? "animate-pulse" : "opacity-50"}`} />
             <span>
-              Real-time updates will appear automatically while this page is
-              open.
+              {connected
+                ? "Real-time updates are live on this page."
+                : "Reconnecting to live updates…"}
             </span>
           </div>
           <div className="hidden sm:flex items-center gap-1.5 text-white/80 text-xs shrink-0">
-            <RefreshCw size={11} className={refreshing ? "animate-spin" : ""} />
-            <span>Updated {fmtClock(lastRefresh)}</span>
+            <RefreshCw size={11} />
+            <span>Last event {fmtClock(lastRefresh)}</span>
           </div>
         </div>
       </div>
@@ -1012,14 +1031,10 @@ export default function QueueDetails() {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={silentRefresh}
-              disabled={refreshing}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-600 hover:border-blue-300 hover:text-blue-600 transition-all disabled:opacity-50"
+              onClick={load}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-600 hover:border-blue-300 hover:text-blue-600 transition-all"
             >
-              <RefreshCw
-                size={14}
-                className={refreshing ? "animate-spin" : ""}
-              />
+              <RefreshCw size={14} />
               <span className="hidden sm:inline">Refresh</span>
             </button>
             {myToken && (
@@ -1048,13 +1063,10 @@ export default function QueueDetails() {
               joining={joining}
             />
 
-            {/* Stat cards — Queue model fields */}
             <QueueStatCards queue={queue} />
 
-            {/* My token detail row — joinQueue response fields */}
             {myToken && <MyTokenCard myToken={myToken} queue={queue} />}
 
-            {/* Timeline + side panel */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2">
                 <ActivityTimeline events={timeline} />
@@ -1071,3 +1083,7 @@ export default function QueueDetails() {
     </div>
   );
 }
+
+// join/leave now emit "queueUpdated" with an updated totalTokens (see
+// token.controller.js), so other viewers of this same queue see the count
+// change live without needing to refresh.

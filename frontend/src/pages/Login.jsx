@@ -2,6 +2,7 @@ import axios from "axios";
 import { useState } from "react";
 import authService from "../services/auth.service.js";
 import { useNavigate } from "react-router-dom";
+import socket from "../sockets/socket.js";
 
 /* ── tiny reusable input wrapper ── */
 function InputField({
@@ -372,6 +373,10 @@ export default function Login() {
 
       localStorage.setItem("token", response.token);
       localStorage.setItem("user", JSON.stringify(response.user));
+
+      if (!socket.connected) {
+        socket.connect();
+      }
 
       if (response.user.role === "patient") {
         navigate("/hospitals");

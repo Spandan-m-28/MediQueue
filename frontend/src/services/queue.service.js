@@ -75,6 +75,8 @@ const getCurrentActiveToken = async (queueId) => {
   }
 };
 
+// NOTE: paths must match your router exactly — it defines
+// "/:queueId/complete-current" and "/:queueId/miss-current"
 const completeCurrentToken = async (queueId) => {
   try {
     const { data } = await axiosInstance.post(`/queue/${queueId}/complete-current`);

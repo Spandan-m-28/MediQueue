@@ -16,7 +16,7 @@ const Navbar = () => {
               Medi<span className="text-blue-600">Queue</span>
             </span>
           </div>
-
+          {/*  Will add this pages later
           <div className="hidden md:flex items-center gap-1">
             {["Hospitals", "Doctors", "Appointments", "About"].map((item) => (
               <a
@@ -31,7 +31,7 @@ const Navbar = () => {
                 {item}
               </a>
             ))}
-          </div>
+          </div> */}
 
           <div className="hidden md:flex items-center gap-2">
             <button className="w-9 h-9 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-all relative">
