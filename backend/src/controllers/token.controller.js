@@ -1,6 +1,7 @@
 import { Token } from "../models/token.model.js";
 import { Queue } from "../models/queue.model.js";
 import { Department } from "../models/department.model.js";
+import { emitQueueUpdate } from "../sockets/socket.js";
 
 const joinQueue = async (req, res) => {
   try {
@@ -69,6 +70,15 @@ const joinQueue = async (req, res) => {
     queue.totalTokens += 1;
     await queue.save();
 
+    // Let everyone else viewing this queue know totalTokens just changed.
+    // activeToken is unaffected by someone joining, so pass null.
+    emitQueueUpdate(queueId, {
+      currentToken: queue.currentToken,
+      queueStatus: queue.queueStatus,
+      totalTokens: queue.totalTokens,
+      activeToken: null,
+    });
+
     return res.status(201).json({
       success: true,
       message: "Token created successfully",
@@ -129,8 +139,28 @@ const leaveQueue = async (req, res) => {
       });
     }
 
+    // Remember this *before* overwriting status below — if the token being
+    // left was the one currently being served, the staff dashboard needs to
+    // know the "active" slot just freed up (otherwise it stays stuck showing
+    // "resolve the current token first" for a token nobody can resolve anymore).
+    const wasActive = token.status === "active";
+
     token.status = "cancelled";
     await token.save();
+
+    const queue = await Queue.findById(queueId);
+
+    // totalTokens is a running "tokens ever issued" counter used to generate
+    // the next tokenNumber — it intentionally does NOT decrease when someone
+    // leaves, so it's just passed through unchanged here.
+    emitQueueUpdate(queueId, {
+      currentToken: queue.currentToken,
+      queueStatus: queue.queueStatus,
+      totalTokens: queue.totalTokens,
+      activeToken: wasActive
+        ? { tokenNumber: token.tokenNumber, status: "cancelled" }
+        : null,
+    });
 
     return res.status(200).json({
       success: true,
@@ -147,21 +177,21 @@ const leaveQueue = async (req, res) => {
 const getCurrentActiveToken = async (req, res) => {
   try {
     const { queueId } = req.params;
- 
+
     const queue = await Queue.findById(queueId);
- 
+
     if (!queue) {
       return res.status(404).json({
         success: false,
         message: "Queue not found",
       });
     }
- 
+
     const activeToken = await Token.findOne({
       queueId,
       status: "active",
     }).populate("patientId", "name phone"); // adjust fields to whatever your Patient/User model actually has
- 
+
     if (!activeToken) {
       return res.status(200).json({
         success: true,
@@ -169,7 +199,7 @@ const getCurrentActiveToken = async (req, res) => {
         token: null,
       });
     }
- 
+
     return res.status(200).json({
       success: true,
       message: "Active token fetched successfully",
@@ -183,4 +213,4 @@ const getCurrentActiveToken = async (req, res) => {
   }
 };
 
-export { joinQueue, getMyToken, leaveQueue ,getCurrentActiveToken};
+export { joinQueue, getMyToken, leaveQueue, getCurrentActiveToken };

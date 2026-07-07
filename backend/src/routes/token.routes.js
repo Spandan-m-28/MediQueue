@@ -16,7 +16,7 @@ router.patch("/:queueId/leave", verifyJWT, leaveQueue);
 router.get(
   "/:queueId/current-token",
   verifyJWT,
-  allowRoles("staff"),
+  allowRoles("staff", "admin"),
   getCurrentActiveToken,
 );
 

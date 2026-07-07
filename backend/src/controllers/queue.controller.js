@@ -1,7 +1,7 @@
 import { Queue } from "../models/queue.model.js";
 import { Department } from "../models/department.model.js";
-import { response } from "express";
 import { Token } from "../models/token.model.js";
+import { emitQueueUpdate } from "../sockets/socket.js";
 
 const createQueue = async (req, res) => {
   try {
@@ -91,6 +91,17 @@ const updateQueueStatus = async (req, res) => {
       queue.queueStatus = queueStatus;
       await queue.save();
 
+      // Let anyone viewing this queue know its status changed, even though
+      // currentToken itself didn't move.
+      const activeToken = await Token.findOne({ queueId, status: "active" });
+      emitQueueUpdate(queueId, {
+        currentToken: queue.currentToken,
+        queueStatus: queue.queueStatus,
+        activeToken: activeToken
+          ? { tokenNumber: activeToken.tokenNumber, status: activeToken.status }
+          : null,
+      });
+
       return res.status(200).json({
         success: true,
         message: "Status updated successfully",
@@ -162,6 +173,12 @@ const callNextToken = async (req, res) => {
     queue.currentToken = nextTokenNumber;
     await queue.save();
 
+    emitQueueUpdate(queueId, {
+      currentToken: queue.currentToken,
+      queueStatus: queue.queueStatus,
+      activeToken: { tokenNumber: token.tokenNumber, status: token.status },
+    });
+
     return res.status(200).json({
       success: true,
       message: "Next token called successfully",
@@ -205,6 +222,15 @@ const completeCurrentToken = async (req, res) => {
 
     await activeToken.save();
 
+    // currentToken number doesn't change here, but its status does — tell
+    // anyone watching (mainly: the patient who held that token) so they see
+    // "Completed" without polling.
+    emitQueueUpdate(queueId, {
+      currentToken: queue.currentToken,
+      queueStatus: queue.queueStatus,
+      activeToken: { tokenNumber: activeToken.tokenNumber, status: activeToken.status },
+    });
+
     return res.status(200).json({
       success: true,
       message: "Token completed successfully",
@@ -246,6 +272,12 @@ const missCurrentToken = async (req, res) => {
     activeToken.status = "missed";
 
     await activeToken.save();
+
+    emitQueueUpdate(queueId, {
+      currentToken: queue.currentToken,
+      queueStatus: queue.queueStatus,
+      activeToken: { tokenNumber: activeToken.tokenNumber, status: activeToken.status },
+    });
 
     return res.status(200).json({
       success: true,
@@ -292,7 +324,7 @@ const getHospitalQueues = async (req, res) => {
 
     const queues = await Queue.find(filter).populate(
       "departmentId",
-      "name averageConsultationTime doctorNames"
+      "name averageConsultationTime doctorNames",
     );
 
     return res.status(200).json({
@@ -317,5 +349,5 @@ export {
   callNextToken,
   completeCurrentToken,
   missCurrentToken,
-  getHospitalQueues
+  getHospitalQueues,
 };
