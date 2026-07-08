@@ -7,6 +7,7 @@ import {
   getHospitalQueues,
   missCurrentToken,
   updateQueueStatus,
+  getQueueByDepartment,
 } from "../controllers/queue.controller.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { allowRoles } from "../middlewares/role.middleware.js";
@@ -20,7 +21,12 @@ router.post(
   createQueue,
 );
 
-router.get("/getstaffqueues", verifyJWT, allowRoles("staff"), getHospitalQueues);
+router.get(
+  "/getstaffqueues",
+  verifyJWT,
+  allowRoles("staff"),
+  getHospitalQueues,
+);
 
 router.get("/:queueId", verifyJWT, getQueue);
 
@@ -52,5 +58,6 @@ router.post(
   missCurrentToken,
 );
 
+router.get("/department/:departmentId", verifyJWT, getQueueByDepartment);
 
 export default router;

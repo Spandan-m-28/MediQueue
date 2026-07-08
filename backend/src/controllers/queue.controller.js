@@ -342,9 +342,45 @@ const getHospitalQueues = async (req, res) => {
   }
 };
 
+const getQueueByDepartment = async (req, res) => {
+  try {
+    const { departmentId } = req.params;
+
+    const department = await Department.findById(departmentId);
+
+    if (!department) {
+      return res.status(404).json({
+        success: false,
+        message: "Department not found",
+      });
+    }
+
+    const queue = await Queue.findOne({ departmentId });
+
+    if (!queue) {
+      return res.status(404).json({
+        success: false,
+        message: "Queue not found for this department",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Queue fetched successfully",
+      queue,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
 export {
   createQueue,
   getQueue,
+  getQueueByDepartment,
   updateQueueStatus,
   callNextToken,
   completeCurrentToken,
