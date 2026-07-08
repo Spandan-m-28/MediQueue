@@ -119,7 +119,8 @@ const getStaffqueues = async () => {
 
 const getQueueByDepartment = async (deptId) => {
   try{
-    const response = await axiosInstance.get(`/department/${deptId}`);
+    const response = await axiosInstance.get(`/queue/department/${deptId}`);
+    console.log(response);
     return response;
   }catch(error){
     throw new Error(error.response?.data?.message || "Failed to fetch queues");
@@ -129,6 +130,7 @@ const getQueueByDepartment = async (deptId) => {
 const queueService = {
   getQueue,
   getDepartmentByQueue,
+  getQueueByDepartment,
   joinQueue,
   getMyTokens,
   updateQueueStatus,
