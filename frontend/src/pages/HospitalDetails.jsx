@@ -31,6 +31,8 @@ import Navbar from "../components/Navbar.jsx";
 import Footer from "../components/Footer.jsx";
 import hospitalService from "../services/hospital.service.js";
 import departmentService from "../services/department.service.js";
+import { useNavigate } from "react-router-dom";
+import queueService from "../services/queue.service.js";
 
 // ─── Icon map for department names ───────────────────────────
 const DEPT_ICON_MAP = {
@@ -454,6 +456,7 @@ function NoDepartments() {
 // ═══════════════════════════════════════════════════════════════
 export default function HospitalDetails() {
   const { id } = useParams();
+  const navigate = useNavigate();
 
   const [hospital, setHospital] = useState(null);
   const [departments, setDepartments] = useState([]);
@@ -482,9 +485,13 @@ export default function HospitalDetails() {
   }, [id]);
 
   // ── helper to navigate to queue page ──
-  const handleViewQueue = (deptId) => {
-    // Replace with: navigate(`/queues/${deptId}`)
-    window.location.href = `/queue/${deptId}`;
+  const handleViewQueue = async (deptId) => {
+    try{
+      const response = await queueService.callNextToken(deptId);
+      navigate(`/queue/${response.queue._id}`);
+    }catch(error){
+      console.log("Queue not found");
+    }
   };
 
   const TABS = ["departments", "about"];
