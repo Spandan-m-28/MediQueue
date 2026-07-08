@@ -487,7 +487,7 @@ export default function HospitalDetails() {
   // ── helper to navigate to queue page ──
   const handleViewQueue = async (deptId) => {
     try{
-      const response = await queueService.callNextToken(deptId);
+      const response = await queueService.getDepartmentByQueue(deptId);
       navigate(`/queue/${response.queue._id}`);
     }catch(error){
       console.log("Queue not found");
