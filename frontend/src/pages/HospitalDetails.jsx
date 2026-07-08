@@ -260,7 +260,7 @@ function InfoCards({ hospital, deptCount }) {
 }
 
 // ─── Department Card ──────────────────────────────────────────
-function DepartmentCard({ dept, colorIndex, onViewQueue }) {
+function DepartmentCard({ dept, colorIndex, onViewQueue, loading }) {
   const [hovered, setHovered] = useState(false);
   const IconComp = getDeptIcon(dept.name);
   const palette = DEPT_COLORS[colorIndex % DEPT_COLORS.length];
@@ -349,7 +349,10 @@ function DepartmentCard({ dept, colorIndex, onViewQueue }) {
       {/* CTA */}
       <button
         onClick={() => onViewQueue(dept._id)}
-        className="mt-auto w-full py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
+        disabled={loading}
+        className={`mt-auto w-full py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
+          loading ? "opacity-70 cursor-not-allowed" : ""
+        }`}
         style={{
           background: hovered ? "#2563EB" : "#EFF6FF",
           color: hovered ? "#ffffff" : "#2563EB",
@@ -357,7 +360,14 @@ function DepartmentCard({ dept, colorIndex, onViewQueue }) {
           boxShadow: hovered ? "0 4px 12px rgba(37,99,235,0.3)" : "none",
         }}
       >
-        View Queue
+        {loading ? (
+          <span className="flex items-center justify-center gap-2">
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            Opening...
+          </span>
+        ) : (
+          "View Queue"
+        )}
       </button>
     </div>
   );
@@ -463,6 +473,7 @@ export default function HospitalDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [activeTab, setActiveTab] = useState("departments");
+  const [loadingQueueId, setLoadingQueueId] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -486,11 +497,17 @@ export default function HospitalDetails() {
 
   // ── helper to navigate to queue page ──
   const handleViewQueue = async (deptId) => {
-    try{
+    try {
+      setLoadingQueueId(deptId);
+
       const response = await queueService.getQueueByDepartment(deptId);
+
       navigate(`/queue/${response.queue._id}`);
-    }catch(error){
-      console.log("Queue not found");
+    } catch (error) {
+      console.error(error);
+      alert("Queue not found");
+    } finally {
+      setLoadingQueueId(null);
     }
   };
 
@@ -630,6 +647,7 @@ export default function HospitalDetails() {
                         dept={dept}
                         colorIndex={idx}
                         onViewQueue={handleViewQueue}
+                        loading={loadingQueueId === dept._id}
                       />
                     ))}
                   </div>
