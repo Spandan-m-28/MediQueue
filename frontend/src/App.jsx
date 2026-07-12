@@ -1,5 +1,5 @@
 import { Routes, Route } from "react-router-dom";
-import { useState , useEffect} from "react";
+import { useState, useEffect } from "react";
 import "./App.css";
 import socket from "./sockets/socket.js";
 
@@ -15,13 +15,13 @@ import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
 function App() {
   useEffect(() => {
-  const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token");
 
-  if (token && !socket.connected) {
-    socket.connect();
-    console.log("Socket Connected");
-  }
-}, []);
+    if (token && !socket.connected) {
+      socket.connect();
+      console.log("Socket Connected");
+    }
+  }, []);
 
   return (
     <>
@@ -47,11 +47,14 @@ function App() {
           }
         />
 
-        <Route path="/queue/:id" element={
-          <ProtectedRoute allowedRoles={["patient","staff"]}>
+        <Route
+          path="/queue/:id"
+          element={
+            <ProtectedRoute allowedRoles={["patient", "staff"]}>
               <QueueDetails />
             </ProtectedRoute>
-        } />
+          }
+        />
 
         <Route
           path="/staff"
@@ -61,11 +64,14 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="/staff/queue/:id" element={
-          <ProtectedRoute allowedRoles={["staff"]}>
+        <Route
+          path="/staff/queue/:id"
+          element={
+            <ProtectedRoute allowedRoles={["staff"]}>
               <StaffQueueDashboard />
             </ProtectedRoute>
-        } />
+          }
+        />
       </Routes>
     </>
   );
