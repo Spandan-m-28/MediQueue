@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import queueService from "../services/queue.service.js";
 import { useParams } from "react-router-dom";
+import socket from "../sockets/socket.js";
 
 // ─────────────────────────────────────────────────────────────────────────
 // NOTE ON DATA SHAPE
@@ -45,7 +46,14 @@ import { useParams } from "react-router-dom";
 //
 // getQueue        -> GET  /queue/:queueId              -> { success, message, queue }
 // getDeptByQueue  -> GET  /department/details/:deptId  -> { success, department }
-// getCurrentActiveToken -> GET /queue/:queueId/current-token -> { success, message, token }  (token is null if nothing is active)
+// getCurrentActiveToken -> GET /token/:queueId/current-token -> { success, message, token }  (token is null if nothing is active)
+//
+// Live updates come from Socket.IO — see the "queueUpdated" listener below.
+// Its payload is { currentToken, queueStatus, totalTokens, activeToken: { tokenNumber, status } | null },
+// emitted from queue.controller.js (next/complete-current/miss-current/status)
+// and token.controller.js (join/leave). It deliberately doesn't carry the
+// full Token doc (estimatedWaitTime, patientId), so on every event we
+// re-fetch getCurrentActiveToken to get those — see refreshLive() below.
 //
 // TODO(backend): there is still no endpoint returning the *waiting list* for a
 // queue (only the single current-active-token lookup above exists). Once one
@@ -381,9 +389,6 @@ function ErrorState({ onRetry }) {
 }
 
 // ─── Current Token Card ───────────────────────────────────────
-// currentToken is the Token document whose tokenNumber === queue.currentToken.
-// Calling the next token is only allowed once that token has been resolved
-// (status "completed" or "missed") or there isn't one yet (queue never started).
 function CurrentTokenCard({
   queue,
   currentToken,
@@ -483,9 +488,6 @@ function CurrentTokenCard({
           </div>
 
           <div className="w-full lg:w-72 shrink-0 space-y-2.5">
-            {/* Resolve step: staff must mark the current token Completed or Missed
-               before "Call Next Token" unlocks. Both buttons are always visible so
-               it's clear this is a required step, not a hidden mode switch. */}
             <div className="grid grid-cols-2 gap-2.5">
               <button
                 onClick={onComplete}
@@ -638,8 +640,6 @@ function PatientListEmpty() {
 }
 
 // ─── Activity Timeline ────────────────────────────────────────
-// This is built from local staff actions for now — there's no activity-log
-// endpoint yet. Ready to swap for a Socket.IO feed later.
 function ActivityTimeline({ events }) {
   return (
     <div
@@ -652,7 +652,7 @@ function ActivityTimeline({ events }) {
             Recent Activity
           </h3>
           <p className="text-xs text-gray-400 mt-0.5">
-            Local session log — ready for Socket.IO
+            Live event log via Socket.IO
           </p>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-full">
@@ -716,7 +716,14 @@ export default function StaffQueueDashboard() {
   const [actionLoading, setActionLoading] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null); // 'pause' | 'close' | null
   const [lastRefresh, setLastRefresh] = useState(new Date());
-  const intervalRef = useRef(null);
+  const [connected, setConnected] = useState(socket.connected);
+
+  // Kept in a ref so the socket handler (registered once) can read the
+  // current queue without needing to be re-subscribed on every change.
+  const queueRef = useRef(null);
+  useEffect(() => {
+    queueRef.current = queue;
+  }, [queue]);
 
   const pushEvent = useCallback((type, message) => {
     setTimeline((prev) => [
@@ -729,11 +736,9 @@ export default function StaffQueueDashboard() {
     setLoading(true);
     setError(false);
     try {
-      // getQueue returns only { success, message, queue } — no tokens, no department.
       const queueRes = await queueService.getQueue(id);
       setQueue(queueRes.queue);
 
-      // Department is a separate call keyed by departmentId.
       if (queueRes.queue?.departmentId) {
         const deptRes = await queueService.getDepartmentByQueue(
           queueRes.queue.departmentId,
@@ -741,13 +746,9 @@ export default function StaffQueueDashboard() {
         setDepartment(deptRes.department || null);
       }
 
-      // The current active token — this is what gates "Call Next" vs "Completed/Missed".
       const activeRes = await queueService.getCurrentActiveToken(id);
       setCurrentToken(activeRes.token || null);
 
-      // TODO(backend): there is still no endpoint for the *waiting list* (all
-      // "waiting" tokens for this queue). Once GET /queue/:queueId/tokens (or
-      // similar) exists, fetch it here and bring back the waiting-patients table.
       setLastRefresh(new Date());
     } catch (err) {
       console.error(err);
@@ -757,17 +758,129 @@ export default function StaffQueueDashboard() {
     }
   }, [id]);
 
+  const refreshLive = useCallback(async () => {
+    try {
+      const [queueRes, activeRes] = await Promise.all([
+        queueService.getQueue(id),
+        queueService.getCurrentActiveToken(id),
+      ]);
+      setQueue(queueRes.queue);
+      setCurrentToken(activeRes.token || null);
+      setLastRefresh(new Date());
+    } catch (err) {
+      console.error(err);
+    }
+  }, [id]);
+
+  // Initial load only — no more 30s polling interval.
   useEffect(() => {
     load();
-    intervalRef.current = setInterval(load, 30000);
-    return () => clearInterval(intervalRef.current);
   }, [load]);
 
+  // ── Socket room join/leave ─────────────────────────────────
+  useEffect(() => {
+    socket.connect(); // no-op if already connected — required since autoConnect: false
+    socket.emit("joinQueue", id);
+    return () => {
+      socket.emit("leaveQueueRoom", id);
+    };
+  }, [id]);
+
+  // ── Connection status ───────────────────────────────────────
+  useEffect(() => {
+    const onConnect = () => {
+      setConnected(true);
+      socket.emit("joinQueue", id);
+      refreshLive();
+    };
+    const onDisconnect = () => setConnected(false);
+
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+    return () => {
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
+    };
+  }, [id, refreshLive]);
+
+  // ── Live updates ─────────────────────────────────────────────
+  // Payload: { currentToken, queueStatus, totalTokens, activeToken: { tokenNumber, status } | null }
+  // This doesn't carry estimatedWaitTime/patientId, so after logging the
+  // diff we re-fetch the full current-token doc via refreshLive().
+  useEffect(() => {
+    const handleQueueUpdate = (data) => {
+      console.log("queueUpdated:", data);
+      const prevQueue = queueRef.current;
+
+      if (prevQueue) {
+        if (prevQueue.queueStatus !== data.queueStatus) {
+          const label =
+            data.queueStatus === "paused"
+              ? "Queue paused by staff"
+              : data.queueStatus === "closed"
+                ? "Queue closed by staff"
+                : "Queue resumed by staff";
+          pushEvent(
+            data.queueStatus === "paused"
+              ? "paused"
+              : data.queueStatus === "active"
+                ? "resumed"
+                : "completed",
+            label,
+          );
+        }
+
+        if (data.currentToken !== prevQueue.currentToken && data.activeToken) {
+          pushEvent(
+            "called",
+            `Token #${data.activeToken.tokenNumber} called to counter`,
+          );
+        }
+
+        if (
+          data.activeToken &&
+          data.currentToken === prevQueue.currentToken &&
+          data.activeToken.status !== "active"
+        ) {
+          // Same token number as before, but its status just resolved —
+          // i.e. someone (staff or the patient themselves) completed,
+          // missed, or cancelled the token that was active.
+          const type =
+            data.activeToken.status === "completed"
+              ? "completed"
+              : data.activeToken.status === "missed"
+                ? "missed"
+                : "cancelled";
+          pushEvent(
+            type,
+            `Token #${data.activeToken.tokenNumber} marked ${data.activeToken.status}`,
+          );
+        }
+
+        if (
+          data.totalTokens != null &&
+          data.totalTokens !== prevQueue.totalTokens
+        ) {
+          pushEvent("joined", `Total tokens now ${data.totalTokens}`);
+        }
+      }
+
+      // Refetch the authoritative queue + full current-token doc.
+      refreshLive();
+    };
+
+    socket.on("queueUpdated", handleQueueUpdate);
+    return () => {
+      socket.off("queueUpdated", handleQueueUpdate);
+    };
+  }, [pushEvent, refreshLive]);
+
   // ── Token actions ──
-  // Each controller only returns { success, message, token } (the single token
-  // that was just touched) — not the full queue or token list — so the
-  // simplest reliable thing to do is re-run load() after a successful call
-  // rather than trying to patch local state from a partial response.
+  // Local pushEvent calls here are kept for instant feedback on the action
+  // the staff member themselves just took. The refreshLive() that follows
+  // this (via the socket handler above) will re-sync state, but that's
+  // driven by the emitted event, not called directly from these handlers
+  // anymore — no need to await load()/refreshLive() here.
   const handleNext = async () => {
     setActionLoading("next");
     try {
@@ -776,7 +889,6 @@ export default function StaffQueueDashboard() {
         "called",
         `Token #${response.token?.tokenNumber ?? queue.currentToken + 1} called to counter`,
       );
-      await load();
     } catch (err) {
       console.error(err);
     } finally {
@@ -789,7 +901,6 @@ export default function StaffQueueDashboard() {
     try {
       await queueService.completeCurrentToken(id);
       pushEvent("completed", `Token #${queue.currentToken} marked completed`);
-      await load();
     } catch (err) {
       console.error(err);
     } finally {
@@ -802,7 +913,6 @@ export default function StaffQueueDashboard() {
     try {
       await queueService.missCurrentToken(id);
       pushEvent("missed", `Token #${queue.currentToken} marked missed`);
-      await load();
     } catch (err) {
       console.error(err);
     } finally {
@@ -848,15 +958,19 @@ export default function StaffQueueDashboard() {
       <div className="bg-linear-to-r from-blue-600 to-teal-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-white text-xs font-medium">
-            <Wifi size={13} className="shrink-0 animate-pulse" />
+            <Wifi
+              size={13}
+              className={`shrink-0 ${connected ? "animate-pulse" : "opacity-50"}`}
+            />
             <span>
-              Live updates are enabled. Queue information refreshes
-              automatically every 30s.
+              {connected
+                ? "Live updates are on — this page reacts instantly to changes."
+                : "Reconnecting to live updates…"}
             </span>
           </div>
           <div className="hidden sm:flex items-center gap-2 text-white/80 text-xs shrink-0">
             <RefreshCw size={11} />
-            <span>Updated {fmtTime(lastRefresh)}</span>
+            <span>Last event {fmtTime(lastRefresh)}</span>
           </div>
         </div>
       </div>
@@ -993,7 +1107,7 @@ export default function StaffQueueDashboard() {
                 </h3>
                 <p className="text-gray-400 text-sm max-w-sm">
                   Only the current active token can be fetched right now (GET
-                  /queue/:queueId/current-token). Add an endpoint that returns
+                  /token/:queueId/current-token). Add an endpoint that returns
                   all "waiting" tokens for this queue to populate this table.
                 </p>
               </div>

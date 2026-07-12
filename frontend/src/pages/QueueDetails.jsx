@@ -814,6 +814,7 @@ export default function QueueDetails() {
 
   // ── Socket room join/leave ─────────────────────────────────
   useEffect(() => {
+    socket.connect(); // no-op if already connected — required since autoConnect: false
     socket.emit("joinQueue", id);
     return () => {
       socket.emit("leaveQueueRoom", id);
@@ -849,7 +850,11 @@ export default function QueueDetails() {
 
         if (prev.queueStatus !== data.queueStatus) {
           pushEvent(
-            data.queueStatus === "paused" ? "paused" : data.queueStatus === "active" ? "resumed" : "completed",
+            data.queueStatus === "paused"
+              ? "paused"
+              : data.queueStatus === "active"
+                ? "resumed"
+                : "completed",
             data.queueStatus === "paused"
               ? "Queue was paused by staff"
               : data.queueStatus === "closed"
@@ -859,7 +864,10 @@ export default function QueueDetails() {
         }
 
         if (data.currentToken !== prev.currentToken && data.activeToken) {
-          pushEvent("called", `Token #${data.activeToken.tokenNumber} called to the counter`);
+          pushEvent(
+            "called",
+            `Token #${data.activeToken.tokenNumber} called to the counter`,
+          );
         }
 
         return {
@@ -872,15 +880,27 @@ export default function QueueDetails() {
 
       // If the token that just changed is mine, reflect its new status.
       const mine = myTokenRef.current;
-      if (mine && data.activeToken && data.activeToken.tokenNumber === mine.tokenNumber) {
+      if (
+        mine &&
+        data.activeToken &&
+        data.activeToken.tokenNumber === mine.tokenNumber
+      ) {
         if (data.activeToken.status !== mine.status) {
           if (data.activeToken.status === "completed") {
-            pushEvent("completed", `Your token #${mine.tokenNumber} was marked completed`);
+            pushEvent(
+              "completed",
+              `Your token #${mine.tokenNumber} was marked completed`,
+            );
           } else if (data.activeToken.status === "missed") {
-            pushEvent("missed", `Your token #${mine.tokenNumber} was marked missed`);
+            pushEvent(
+              "missed",
+              `Your token #${mine.tokenNumber} was marked missed`,
+            );
           }
           setMyToken((prevToken) =>
-            prevToken ? { ...prevToken, status: data.activeToken.status } : prevToken,
+            prevToken
+              ? { ...prevToken, status: data.activeToken.status }
+              : prevToken,
           );
         }
       }
@@ -964,7 +984,10 @@ export default function QueueDetails() {
       <div className="bg-linear-to-r from-blue-600 to-teal-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-white text-xs font-medium">
-            <Wifi size={13} className={`shrink-0 ${connected ? "animate-pulse" : "opacity-50"}`} />
+            <Wifi
+              size={13}
+              className={`shrink-0 ${connected ? "animate-pulse" : "opacity-50"}`}
+            />
             <span>
               {connected
                 ? "Real-time updates are live on this page."
