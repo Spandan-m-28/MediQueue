@@ -31,6 +31,12 @@ import Navbar from "../components/Navbar.jsx";
 import Footer from "../components/Footer.jsx";
 import queueService from "../services/queue.service.js";
 import socket from "../sockets/socket.js";
+import {
+  notifySuccess,
+  notifyError,
+  notifyWarning,
+  notifyInfo,
+} from "../utils/toast.js";
 
 // ─── Helpers ──────────────────────────────────────────────────
 function fmtTime(dateStr) {
@@ -765,6 +771,10 @@ export default function QueueDetails() {
     myTokenRef.current = myToken;
   }, [myToken]);
 
+  // Tracks whether we've dropped a connection before, so the "connect"
+  // handler only toasts on an actual reconnect — not on first page load.
+  const hadDisconnectedRef = useRef(false);
+
   const pushEvent = (type, message) => {
     setTimeline((prev) => [
       { id: Date.now(), type, message, ago: "just now" },
@@ -825,11 +835,18 @@ export default function QueueDetails() {
   useEffect(() => {
     const onConnect = () => {
       setConnected(true);
+      if (hadDisconnectedRef.current) {
+        notifySuccess("Back online — refreshing queue status");
+      }
       // Rejoin the room and re-sync in case we reconnected after a drop.
       socket.emit("joinQueue", id);
       load();
     };
-    const onDisconnect = () => setConnected(false);
+    const onDisconnect = () => {
+      setConnected(false);
+      hadDisconnectedRef.current = true;
+      notifyWarning("Connection lost — trying to reconnect…");
+    };
 
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
@@ -850,11 +867,7 @@ export default function QueueDetails() {
 
         if (prev.queueStatus !== data.queueStatus) {
           pushEvent(
-            data.queueStatus === "paused"
-              ? "paused"
-              : data.queueStatus === "active"
-                ? "resumed"
-                : "completed",
+            data.queueStatus === "paused" ? "paused" : data.queueStatus === "active" ? "resumed" : "completed",
             data.queueStatus === "paused"
               ? "Queue was paused by staff"
               : data.queueStatus === "closed"
@@ -864,10 +877,8 @@ export default function QueueDetails() {
         }
 
         if (data.currentToken !== prev.currentToken && data.activeToken) {
-          pushEvent(
-            "called",
-            `Token #${data.activeToken.tokenNumber} called to the counter`,
-          );
+          pushEvent("called", `Token #${data.activeToken.tokenNumber} called to the counter`);
+          notifyInfo(`Token #${data.activeToken.tokenNumber} has been called`);
         }
 
         return {
@@ -880,27 +891,17 @@ export default function QueueDetails() {
 
       // If the token that just changed is mine, reflect its new status.
       const mine = myTokenRef.current;
-      if (
-        mine &&
-        data.activeToken &&
-        data.activeToken.tokenNumber === mine.tokenNumber
-      ) {
+      if (mine && data.activeToken && data.activeToken.tokenNumber === mine.tokenNumber) {
         if (data.activeToken.status !== mine.status) {
           if (data.activeToken.status === "completed") {
-            pushEvent(
-              "completed",
-              `Your token #${mine.tokenNumber} was marked completed`,
-            );
+            pushEvent("completed", `Your token #${mine.tokenNumber} was marked completed`);
+            notifySuccess(`Your visit is complete — thanks for waiting!`);
           } else if (data.activeToken.status === "missed") {
-            pushEvent(
-              "missed",
-              `Your token #${mine.tokenNumber} was marked missed`,
-            );
+            pushEvent("missed", `Your token #${mine.tokenNumber} was marked missed`);
+            notifyWarning(`You missed your turn for token #${mine.tokenNumber}`);
           }
           setMyToken((prevToken) =>
-            prevToken
-              ? { ...prevToken, status: data.activeToken.status }
-              : prevToken,
+            prevToken ? { ...prevToken, status: data.activeToken.status } : prevToken,
           );
         }
       }
@@ -939,6 +940,7 @@ export default function QueueDetails() {
       );
 
       pushEvent("joined", `You joined the queue (Token #${res.tokenNumber})`);
+      notifySuccess(`You joined the queue — your token is #${res.tokenNumber}`);
     } catch (err) {
       console.error(err);
       const msg = err?.response?.data?.message || "Failed to join queue.";
@@ -960,8 +962,7 @@ export default function QueueDetails() {
         "completed",
         `Token #${myToken.tokenNumber} — you left the queue`,
       );
-
-      console.log(response.message);
+      notifySuccess(`You left the queue (Token #${myToken.tokenNumber})`);
     } catch (error) {
       console.error(error);
       alert(error.message);
@@ -984,10 +985,7 @@ export default function QueueDetails() {
       <div className="bg-linear-to-r from-blue-600 to-teal-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-white text-xs font-medium">
-            <Wifi
-              size={13}
-              className={`shrink-0 ${connected ? "animate-pulse" : "opacity-50"}`}
-            />
+            <Wifi size={13} className={`shrink-0 ${connected ? "animate-pulse" : "opacity-50"}`} />
             <span>
               {connected
                 ? "Real-time updates are live on this page."

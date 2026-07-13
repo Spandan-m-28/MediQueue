@@ -3,6 +3,7 @@ import { useState } from "react";
 import authService from "../services/auth.service.js";
 import { useNavigate } from "react-router-dom";
 import socket from "../sockets/socket.js";
+import { notifySuccess, notifyError } from "../utils/toast.js";
 
 /* ── tiny reusable input wrapper ── */
 function InputField({
@@ -371,6 +372,8 @@ export default function Login() {
         password: form.password,
       });
 
+      notifySuccess("Login successful");
+
       localStorage.setItem("token", response.token);
       localStorage.setItem("user", JSON.stringify(response.user));
 
@@ -386,6 +389,7 @@ export default function Login() {
         navigate("/hospitals");
       }
     } catch (err) {
+      notifyError("Invalid email or password");
       setSubmitError(err.message);
     } finally {
       setIsLoading(false);
